@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const search = params.get("search");
   const status = params.get("status"); // passed/failed/pending
   const inspector = params.get("inspector");
-  const vehicleType = params.get("vehicleType"); // truck, bus, trailer etc
+  const vehicleType = params.get("vehicleType"); // truck, bus, trailer etc.
 
   const filters = [];
 
