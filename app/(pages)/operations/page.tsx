@@ -109,6 +109,7 @@ const mockVehicles = [
 
 export default function OperationsPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<typeof mockVehicles[0] | null>(null);
+  const [vehicles, setVehicles] = useState(mockVehicles);
 
   // Mock tire configuration for selected vehicle
   const tireConfiguration = {
@@ -167,8 +168,8 @@ export default function OperationsPage() {
       {/* Bottom Section: Vehicle Fleet & Tire Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Vehicle Fleet List - Takes 1 column */}
-        <div className="lg:col-span-1">
-          <VehicleFleetList vehicles={mockVehicles} onSelectVehicle={setSelectedVehicle} />
+          <div className="lg:col-span-1">
+          <VehicleFleetList vehicles={vehicles} onSelectVehicle={setSelectedVehicle} onAddVehicle={(v) => setVehicles((prev) => [v, ...prev])} />
         </div>
 
         {/* Tire Configuration Viewer - Takes 2 columns */}

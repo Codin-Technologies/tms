@@ -3,6 +3,7 @@ import {
     Box,
     Activity,
     Users,
+    User,
     CheckCircle,
     BarChart,
 } from "lucide-react";
@@ -44,6 +45,11 @@ export const sidebarItems: {
         name: "Reports",
         href: "/reports",
         icon: BarChart,
+    },
+    {
+        name: "Users",
+        href: "/users",
+        icon: User,
     },
 ];
 

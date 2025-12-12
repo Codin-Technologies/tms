@@ -14,6 +14,8 @@ export default function SidebarNav() {
     setIsCollapsed(!isCollapsed);
   };
 
+  const profileActive = pathname?.startsWith('/users');
+
   return (
     <div 
       className={`h-full transition-all duration-300 ease-in-out ${
@@ -85,7 +87,8 @@ export default function SidebarNav() {
 
       {/* User Profile */}
       <div className="p-4 border-t border-teal-700">
-        <div className={`flex items-center gap-3 px-3 py-2 hover:bg-teal-700 rounded-lg cursor-pointer transition-colors ${isCollapsed ? 'justify-center' : ''}`}>
+        <Link href="/users" aria-label="Open user management" title="User management">
+          <div className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isCollapsed ? 'justify-center' : ''} ${profileActive ? 'bg-teal-700 text-white' : 'hover:bg-teal-700 hover:text-white text-teal-100'}`}>
           <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-sm font-semibold">
             TU
           </div>
@@ -95,7 +98,8 @@ export default function SidebarNav() {
               <p className="text-xs text-teal-300">Fleet Manager</p>
             </div>
           )}
-        </div>
+          </div>
+        </Link>
       </div>
     </div>
   );
