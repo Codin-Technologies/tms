@@ -1,15 +1,16 @@
 'use client';
 
+import { useStockQuery } from "@/app/(pages)/stock/query";
 import { DataTable } from "@/components/ui/data-table";
 import { mockTyres } from "@/data/tyres";
-import { Tyre } from "@/types/tyre";
+import { Tyre, TyreDetails } from "@/types/tyre";
 import { ColumnDef } from "@tanstack/react-table";
 
 function getStatusColor(status: string): string {
   switch (status) {
-    case "In Stock":
+    case "instock":
       return "text-green-600";
-    case "Mounted":
+    case "assigned":
       return "text-blue-600";
     case "In Maintenance":
       return "text-yellow-600";
@@ -22,9 +23,9 @@ function getStatusColor(status: string): string {
 
 // Add a prop for onAdd callback
 export function TyreTable({ onAdd }: { onAdd?: () => void }) {
-  const data: Tyre[] = mockTyres;
+  const {isLoading, error, data: tyres} = useStockQuery()
 
-  const columns: ColumnDef<Tyre>[] = [
+  const columns: ColumnDef<TyreDetails>[] = [
     { accessorKey: "serialNumber", header: "Serial Number" },
     { accessorKey: "brand", header: "Brand" },
     { accessorKey: "model", header: "Model" },
@@ -39,16 +40,16 @@ export function TyreTable({ onAdd }: { onAdd?: () => void }) {
       },
     },
     { accessorKey: "location", header: "Location" },
-    { accessorKey: "treadDepth", header: "TreadDepth (mm)" },
+    { accessorKey: "remainingTreadMm", header: "TreadDepth (mm)" },
     { accessorKey: "pressure", header: "Pressure (PSI)" },
     {
-      accessorKey: "price",
+      accessorKey: "purchaseCost",
       header: "Price",
       cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("price"));
+        const amount = parseFloat(row.getValue("purchaseCost"));
         return new Intl.NumberFormat("en-US", {
           style: "currency",
-          currency: "USD",
+          currency: "TSH",
         }).format(amount);
       },
     },
@@ -57,7 +58,7 @@ export function TyreTable({ onAdd }: { onAdd?: () => void }) {
   return (
     <DataTable
       columns={columns}
-      data={data}
+      data={tyres? tyres.data : []}
       title={"Inventory"}
       onAdd={onAdd} // Use callback passed from StockPage
     />

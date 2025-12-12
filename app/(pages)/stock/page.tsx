@@ -3,22 +3,13 @@
 import { useState, useEffect } from "react";
 import { TyreTable } from "@/components/tyre-table";
 import { StatCard } from "@/components/ui/stat-card";
-import { mockTyres } from "@/data/tyres";
 import { Truck } from "lucide-react";
 import AddTyreForm from "@/components/add-new-tyre-form";
+import { useStockOverviewQuery } from "./query";
 
 export default function StockPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Stats
-  const total = mockTyres.length;
-  const inUse = mockTyres.filter((t) => t.status === "Mounted").length;
-  const inStore = mockTyres.filter((t) => t.status === "In Stock").length;
-  const needsReplacement = mockTyres.filter(
-    (t) =>
-      (typeof t.treadDepth === "number" && t.treadDepth <= 3) ||
-      t.status === "Disposed"
-  ).length;
+  const { isLoading, error, data: Overview } = useStockOverviewQuery();
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -31,12 +22,24 @@ export default function StockPage() {
     <div className="mx-auto flex flex-col gap-6">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard title="Total Tyres" value={total} icon={<Truck />} />
-          <StatCard title="In Use" value={inUse} icon={<Truck />} />
-          <StatCard title="In Store" value={inStore} icon={<Truck />} />
+          <StatCard
+            title="Total Tyres"
+            value={Overview ? Overview.data?.total : 0}
+            icon={<Truck />}
+          />
+          <StatCard
+            title="In Use"
+            value={Overview ? Overview.data?.inuse : 0}
+            icon={<Truck />}
+          />
+          <StatCard
+            title="In Store"
+            value={Overview ? Overview.data?.instore : 0}
+            icon={<Truck />}
+          />
           <StatCard
             title="Needs Replacement"
-            value={needsReplacement}
+            value={Overview ? Overview.data?.needsreplacement : 0}
             icon={<Truck />}
           />
         </div>

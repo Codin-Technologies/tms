@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, Download, Plus, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import {  useInspectionOverviewQuery } from './query';
 
 // Types
 interface InspectionRecord {
@@ -140,9 +141,9 @@ export default function InspectionPage() {
   const [dateRange, setDateRange] = useState('30');
   const [vehicleType, setVehicleType] = useState('all');
   const [inspector, setInspector] = useState('all');
-  const [location, setLocation] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  const { isLoading, error, data: inspectionOverview} = useInspectionOverviewQuery();
 
   // Filter records
   const filteredRecords = mockRecords.filter((record) => {
@@ -183,32 +184,32 @@ export default function InspectionPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Total Inspections"
-          value="2,847"
-          change="+12% from last month"
+          value={inspectionOverview ? inspectionOverview.data?.totalInspections.value : 0}
+          change={`${inspectionOverview?inspectionOverview.data?.totalInspections.monthGrowth : 0} from last month`}
           icon={<CheckCircle className="w-6 h-6 text-blue-600" />}
           iconBg="bg-blue-50"
           changeType="up"
         />
         <StatsCard
           title="Failed Inspections"
-          value="127"
-          change="+8% from last month"
+          value={inspectionOverview ? inspectionOverview.data?.failedInspections.value : 0}
+          change={`${inspectionOverview?inspectionOverview.data?.failedInspections.change : 0} from last month`}
           icon={<AlertCircle className="w-6 h-6 text-red-600" />}
           iconBg="bg-red-50"
-          changeType="down"
+          changeType={inspectionOverview && inspectionOverview.data?.failedInspections.direction === 'up' ? 'up' : 'down'}
         />
         <StatsCard
           title="Pending Reviews"
-          value="43"
-          change="⚠️ Requires attention"
+          value={inspectionOverview ? inspectionOverview.data?.pendingReviews.value : 0}
+          change={inspectionOverview && parseInt(inspectionOverview.data?.pendingReviews.value) > 0 ? 'Attention Needed' : 'All Clear'}
           icon={<Clock className="w-6 h-6 text-yellow-600" />}
           iconBg="bg-yellow-50"
           changeType="warning"
         />
         <StatsCard
           title="Pass Rate"
-          value="95.5%"
-          change="+2.1% from last month"
+          value={inspectionOverview ? `${inspectionOverview.data?.passRate.value}%` : '0%'}
+          change={`+${inspectionOverview? inspectionOverview.data?.passRate.change : 0}% from last month`}
           icon={<CheckCircle className="w-6 h-6 text-green-600" />}
           iconBg="bg-green-50"
           changeType="up"
@@ -245,7 +246,6 @@ export default function InspectionPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Statuses</option>
