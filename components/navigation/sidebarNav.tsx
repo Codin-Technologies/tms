@@ -16,10 +16,25 @@ export default function SidebarNav() {
 
   return (
     <div 
-      className={`bg-gray-100 shadow-lg h-full transition-all duration-300 ease-in-out ${
+      className={`h-full transition-all duration-300 ease-in-out ${
         isCollapsed ? "w-20" : "w-64"
-      }`}
+      } bg-teal-800 text-white`}
     >
+      {/* Logo */}
+      <div className="p-6 border-b border-teal-700">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center font-bold text-lg">
+            TM
+          </div>
+          {!isCollapsed && (
+            <div>
+              <h1 className="font-bold text-lg">FleetCo</h1>
+              <p className="text-xs text-teal-300">Tire Management System</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Toggle Button */}
       <div className="flex justify-end pt-4 pr-4 pb-2">
         <button
@@ -50,7 +65,7 @@ export default function SidebarNav() {
                 className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
                   isActive
                     ? "bg-teal-700 text-white"
-                    : "hover:bg-teal-800 hover:text-white text-gray-800"
+                    : "hover:bg-teal-700 hover:text-white text-teal-100"
                 } ${isCollapsed ? "justify-center" : ""}`}
                 title={isCollapsed ? item.name : ""}
               >
@@ -67,6 +82,21 @@ export default function SidebarNav() {
           );
         })}
       </nav>
+
+      {/* User Profile */}
+      <div className="p-4 border-t border-teal-700">
+        <div className={`flex items-center gap-3 px-3 py-2 hover:bg-teal-700 rounded-lg cursor-pointer transition-colors ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-sm font-semibold">
+            TU
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1">
+              <p className="text-sm font-medium">Test User</p>
+              <p className="text-xs text-teal-300">Fleet Manager</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
