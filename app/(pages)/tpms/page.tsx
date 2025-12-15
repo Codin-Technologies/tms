@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useHeader } from '@/components/HeaderContext'
 import { Truck, TrendingUp, AlertTriangle, CheckCircle, User } from "lucide-react";
 
 /** --- Types --- **/
@@ -190,15 +191,19 @@ const TireMonitoringDashboard: React.FC = () => {
       )
     })
     const id = setInterval(() => {
-      setHeader((prev) => ({ ...prev, actions: (
-        <>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-gray-700 font-medium">System Online</span>
-          </div>
-          <span className="text-gray-600">Last Updated: {new Date().toLocaleTimeString()}</span>
-        </>
-      ) }));
+      setHeader({
+        title: 'TPMS',
+        subtitle: 'Real-time Tire Pressure Monitoring System',
+        actions: (
+          <>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-gray-700 font-medium">System Online</span>
+            </div>
+            <span className="text-gray-600">Last Updated: {new Date().toLocaleTimeString()}</span>
+          </>
+        )
+      });
     }, 3000);
 
     return () => { clearInterval(id); setHeader({}); };

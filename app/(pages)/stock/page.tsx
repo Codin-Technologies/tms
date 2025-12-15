@@ -6,7 +6,6 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Truck } from "lucide-react";
 import AddTyreForm from "@/components/add-new-tyre-form";
 import { useStockOverviewQuery } from "./query";
-import { useEffect } from "react";
 import { useHeader } from '@/components/HeaderContext'
 
 export default function StockPage() {
