@@ -156,11 +156,7 @@ export default function OperationsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Tire Operations</h1>
-        <p className="text-gray-600">Manage tire rotations, inspections, and replacements</p>
-      </div>
+      {/* Page content uses the global TopRibbon for title/subtitle */}
 
       {/* Task Columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
