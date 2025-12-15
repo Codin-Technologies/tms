@@ -18,6 +18,7 @@ interface TireConfigurationViewerProps {
     rear: TirePosition[];
   };
   onTireClick?: (tireId: string) => void;
+  onUpdateAxles?: (axles: { front: TirePosition[]; middle: TirePosition[]; rear: TirePosition[] }) => void;
 }
 
 export default function TireConfigurationViewer({
@@ -25,7 +26,8 @@ export default function TireConfigurationViewer({
   subtitle,
   axles,
   onTireClick,
-}: TireConfigurationViewerProps) {
+  onUpdateAxles,
+}: TireConfigurationViewerProps & { onUpdateAxles?: (axles: { front: TirePosition[]; middle: TirePosition[]; rear: TirePosition[] }) => void }) {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'warning':
@@ -37,9 +39,41 @@ export default function TireConfigurationViewer({
     }
   };
 
+  // Local editable state so users can change tyre statuses
+  const [localAxles, setLocalAxles] = React.useState(axles);
+  const [selectedTire, setSelectedTire] = React.useState<TirePosition | null>(null);
+
+  React.useEffect(() => {
+    setLocalAxles(axles);
+  }, [axles]);
+
+  const updateTireStatus = (tireId: string, status: TirePosition['status'] | undefined) => {
+    const mapAndUpdate = (arr: TirePosition[]) => arr.map((t) => (t.id === tireId ? { ...t, status } : t));
+    const next = {
+      front: mapAndUpdate(localAxles.front),
+      middle: mapAndUpdate(localAxles.middle),
+      rear: mapAndUpdate(localAxles.rear),
+    };
+    setLocalAxles(next);
+    onUpdateAxles?.(next);
+    setSelectedTire((prev) => (prev && prev.id === tireId ? { ...prev, status } : prev));
+  };
+
+  const rotateAll = () => {
+    const rotate = (arr: TirePosition[]) => {
+      if (arr.length === 0) return arr;
+      const statuses = arr.map((t) => t.status);
+      const shifted = [statuses[statuses.length - 1], ...statuses.slice(0, statuses.length - 1)];
+      return arr.map((t, i) => ({ ...t, status: shifted[i] }));
+    };
+    const next = { front: rotate(localAxles.front), middle: rotate(localAxles.middle), rear: rotate(localAxles.rear) };
+    setLocalAxles(next);
+    onUpdateAxles?.(next);
+  };
+
   const TireCircle = ({ tire }: { tire: TirePosition }) => (
     <div
-      onClick={() => onTireClick?.(tire.id)}
+      onClick={() => { onTireClick?.(tire.id); setSelectedTire(tire); }}
       className={`w-12 h-12 rounded-full ${getStatusColor(tire.status)} flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity relative`}
     >
       <div className="text-white text-xs font-bold text-center">{tire.label}</div>
@@ -57,7 +91,7 @@ export default function TireConfigurationViewer({
           <p className="text-sm text-gray-600">{subtitle}</p>
         </div>
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+          <button onClick={rotateAll} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2">
             <span>↻</span>
             Rotate All
           </button>
@@ -79,9 +113,9 @@ export default function TireConfigurationViewer({
             {/* Front Axle (Single wheel per side) */}
             <div className="flex flex-col gap-6 items-center">
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">FL</div>
-              <TireCircle tire={axles.front[0]} />
+              <TireCircle tire={localAxles.front[0]} />
               <div className="w-1 h-12 bg-gray-400"></div>
-              <TireCircle tire={axles.front[1]} />
+              <TireCircle tire={localAxles.front[1]} />
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">FR</div>
             </div>
 
@@ -98,12 +132,12 @@ export default function TireConfigurationViewer({
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">MJ-0</div>
               <div className="flex gap-2">
                 <div className="flex flex-col gap-4">
-                  <TireCircle tire={axles.middle[0]} />
-                  <TireCircle tire={axles.middle[1]} />
+                  <TireCircle tire={localAxles.middle[0]} />
+                  <TireCircle tire={localAxles.middle[1]} />
                 </div>
                 <div className="flex flex-col gap-4">
-                  <TireCircle tire={axles.middle[2]} />
-                  <TireCircle tire={axles.middle[3]} />
+                  <TireCircle tire={localAxles.middle[2]} />
+                  <TireCircle tire={localAxles.middle[3]} />
                 </div>
               </div>
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">MJ-1</div>
@@ -114,12 +148,12 @@ export default function TireConfigurationViewer({
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">MR-0</div>
               <div className="flex gap-2">
                 <div className="flex flex-col gap-4">
-                  <TireCircle tire={axles.rear[0]} />
-                  <TireCircle tire={axles.rear[1]} />
+                  <TireCircle tire={localAxles.rear[0]} />
+                  <TireCircle tire={localAxles.rear[1]} />
                 </div>
                 <div className="flex flex-col gap-4">
-                  <TireCircle tire={axles.rear[2]} />
-                  <TireCircle tire={axles.rear[3]} />
+                  <TireCircle tire={localAxles.rear[2]} />
+                  <TireCircle tire={localAxles.rear[3]} />
                 </div>
               </div>
               <div className="text-xs font-bold text-gray-700 bg-gray-300 px-2 py-1 rounded">MR-1</div>
@@ -143,6 +177,28 @@ export default function TireConfigurationViewer({
           </div>
         </div>
       </div>
+      {/* Tire editor panel */}
+      {selectedTire && (
+        <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
+          <h4 className="font-medium mb-2">Tire: {selectedTire.label}</h4>
+          <div className="flex items-center gap-3">
+            <label className="text-sm">Status</label>
+            <select
+              value={selectedTire.status || ''}
+              onChange={(e) => updateTireStatus(selectedTire.id, (e.target.value as TirePosition['status']) || undefined)}
+              className="px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Unspecified</option>
+              <option value="good">Good</option>
+              <option value="warning">Warning</option>
+              <option value="critical">Critical</option>
+            </select>
+            <button className="px-3 py-2 bg-teal-600 text-white rounded-lg" onClick={() => { updateTireStatus(selectedTire.id, 'good'); }}>Mark Good</button>
+            <button className="px-3 py-2 bg-yellow-500 text-white rounded-lg" onClick={() => { updateTireStatus(selectedTire.id, 'warning'); }}>Mark Warning</button>
+            <button className="px-3 py-2 bg-red-500 text-white rounded-lg" onClick={() => { updateTireStatus(selectedTire.id, 'critical'); }}>Mark Critical</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -72,6 +72,8 @@ const mockVehicles = [
     model: 'Freightliner Cascadia',
     status: 'Active' as const,
     tyres: '18/18',
+    axles: 3,
+    tyresPerAxle: 6,
     lastService: '2 days ago',
   },
   {
@@ -80,6 +82,8 @@ const mockVehicles = [
     model: 'Kenworth T680',
     status: 'Service' as const,
     tyres: '17/18',
+    axles: 3,
+    tyresPerAxle: 6,
     lastService: '1 week ago',
   },
   {
@@ -88,6 +92,8 @@ const mockVehicles = [
     model: 'Peterbilt 579',
     status: 'Active' as const,
     tyres: '18/18',
+    axles: 3,
+    tyresPerAxle: 6,
     lastService: '5 days ago',
   },
   {
@@ -96,6 +102,8 @@ const mockVehicles = [
     model: 'Volvo VNL',
     status: 'Active' as const,
     tyres: '18/18',
+    axles: 3,
+    tyresPerAxle: 6,
     lastService: '3 days ago',
   },
   {
@@ -104,9 +112,41 @@ const mockVehicles = [
     model: 'Mack Anthem',
     status: 'Active' as const,
     tyres: '18/18',
+    axles: 3,
+    tyresPerAxle: 6,
     lastService: '1 day ago',
   },
 ];
+
+// Generate an axles layout (front/middle/rear) from vehicle counts
+const makeAxlesLayoutFromVehicle = (v: any) => {
+  const total = v?.bulkTyres ? (v.bulkTyreCount || 0) : ((v.axles || 0) * (v.tyresPerAxle || 0));
+  // always show front(2), middle(4), rear(4) structure supported by the viewer
+  const frontCap = 2;
+  const middleCap = 4;
+  const rearCap = 4;
+
+  let remaining = Math.max(0, total - frontCap);
+  const front = [
+    { id: `${v.id}-FL`, label: 'FL', status: total >= 1 ? 'good' : undefined },
+    { id: `${v.id}-FR`, label: 'FR', status: total >= 2 ? 'good' : undefined },
+  ];
+
+  const takeMiddle = Math.min(remaining, middleCap);
+  remaining = Math.max(0, remaining - takeMiddle);
+  const middle: any[] = [];
+  for (let i = 0; i < middleCap; i++) {
+    middle.push({ id: `${v.id}-MJ-${i}`, label: `MJ-${Math.floor(i/2)}`, status: i < takeMiddle ? 'good' : undefined });
+  }
+
+  const takeRear = Math.min(remaining, rearCap);
+  const rear: any[] = [];
+  for (let i = 0; i < rearCap; i++) {
+    rear.push({ id: `${v.id}-MR-${i}`, label: `MR-${Math.floor(i/2)}`, status: i < takeRear ? 'good' : undefined });
+  }
+
+  return { front, middle, rear };
+};
 
 export default function OperationsPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<typeof mockVehicles[0] | null>(null);
@@ -154,6 +194,17 @@ export default function OperationsPage() {
     console.log('Tire clicked:', tireId);
   };
 
+  const addVehicle = (v: any) => {
+    const withLayout = { ...v, axlesLayout: makeAxlesLayoutFromVehicle(v) };
+    setVehicles((prev) => [withLayout, ...prev]);
+  };
+
+  const updateVehicleAxles = (axlesLayout: any) => {
+    if (!selectedVehicle) return;
+    setVehicles((prev) => prev.map((p) => (p.id === selectedVehicle.id ? { ...p, axlesLayout } : p)));
+    setSelectedVehicle((prev) => (prev ? { ...prev, axlesLayout } : prev));
+  };
+
   return (
     <div className="space-y-6">
       {/* Page content uses the global TopRibbon for title/subtitle */}
@@ -184,7 +235,15 @@ export default function OperationsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Vehicle Fleet List - Takes 1 column */}
           <div className="lg:col-span-1">
-          <VehicleFleetList vehicles={vehicles} onSelectVehicle={setSelectedVehicle} onAddVehicle={(v) => setVehicles((prev) => [v, ...prev])} />
+          <VehicleFleetList vehicles={vehicles} onSelectVehicle={(v) => {
+            // ensure the selected vehicle has an axlesLayout
+            if (!(v as any).axlesLayout) {
+              const withLayout = { ...v, axlesLayout: makeAxlesLayoutFromVehicle(v) };
+              setSelectedVehicle(withLayout as any);
+            } else {
+              setSelectedVehicle(v as any);
+            }
+          }} onAddVehicle={addVehicle} />
         </div>
 
         {/* Tire Configuration Viewer - Takes 2 columns */}
@@ -192,8 +251,9 @@ export default function OperationsPage() {
           <TireConfigurationViewer
             title={selectedVehicle ? `${selectedVehicle.id} - Tire Configuration` : 'FL-7823 - Tire Configuration'}
             subtitle={selectedVehicle ? selectedVehicle.model : 'Freightliner Cascadia | 3-Axle Configuration'}
-            axles={tireConfiguration}
+            axles={(selectedVehicle as any)?.axlesLayout ?? tireConfiguration}
             onTireClick={handleTireClick}
+            onUpdateAxles={updateVehicleAxles}
           />
         </div>
       </div>
