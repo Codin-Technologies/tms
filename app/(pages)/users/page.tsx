@@ -5,6 +5,7 @@ import UserList from "./components/UserList";
 import UserForm, { UserShape } from "./components/UserForm";
 import AuditTrail, { AuditItem } from "./components/AuditTrail";
 import RequireRole from "./components/RequireRole";
+import { useHeader } from '@/components/HeaderContext'
 import { ROLES } from "./components/roles";
 
 const initialUsers: UserShape[] = [
@@ -54,22 +55,26 @@ export default function UsersPage() {
     setEditingUser(null);
   };
 
+  // Set the top ribbon header for this page
+  const { setHeader } = useHeader();
+  React.useEffect(() => {
+    setHeader({
+      title: 'User Management',
+      subtitle: 'Admin can create users, assign roles, and deactivate users',
+      searchPlaceholder: 'Search users...',
+      actions: (
+        <>
+          <RequireRole allowedRoles={[ 'ADMIN' ]} currentRole={currentUser.role}>
+            <button onClick={openCreateModal} className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Add User</button>
+          </RequireRole>
+          <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">Invite (Phase 2)</button>
+        </>
+      )
+    })
+    return () => setHeader({})
+  }, [setHeader])
   return (
     <div className="mx-auto flex flex-col gap-6">
-      <div className="bg-white rounded-lg p-6 border-gray-200 border">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-            <p className="text-sm text-gray-500">Admin can create users, assign roles, and deactivate users</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <RequireRole allowedRoles={[ 'ADMIN' ]} currentRole={currentUser.role}>
-              <button onClick={openCreateModal} className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Add User</button>
-            </RequireRole>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">Invite (Phase 2)</button>
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

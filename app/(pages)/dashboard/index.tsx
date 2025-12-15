@@ -1,5 +1,8 @@
+"use client"
+
 import React from 'react'
-import { Search, Bell, Plus, CheckCircle, AlertTriangle, ClipboardList, Package, Wrench, Truck, FileText, Users, Settings, HelpCircle, LogOut, MoreVertical } from 'lucide-react'
+import { Bell, Plus, CheckCircle, AlertTriangle, ClipboardList, Package, Wrench, Truck, FileText, Users, Settings, HelpCircle, LogOut, MoreVertical } from 'lucide-react'
+import { useHeader } from '@/components/HeaderContext'
 // SidebarNav provided by app/(pages)/layout.tsx
 
 // Sidebar moved to components/navigation/sidebarNav.tsx
@@ -24,36 +27,32 @@ const StatCard = ({ title, value, icon: Icon, trend, iconBg, iconColor, badge }:
 )
 
 const Dashboard = () => {
+  const { setHeader } = useHeader()
+
+  React.useEffect(() => {
+    setHeader({
+      title: "Dashboard Overview",
+      subtitle: "Welcome back, here's what's happening today",
+      searchPlaceholder: "Search tires, vehicles...",
+      actions: (
+        <>
+          <button className="relative p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <Bell size={20} className="text-gray-600" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm">
+            <Plus size={20} />
+            Add Tire
+          </button>
+        </>
+      ),
+    })
+    // cleanup restore default on unmount
+    return () => setHeader({})
+  }, [setHeader])
+
   return (
     <div className="mx-auto flex flex-col gap-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-            <p className="text-sm text-gray-500 mt-1">Welcome back, here's what's happening today</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search tires, vehicles..."
-                className="pl-10 pr-4 py-2.5 w-80 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-              />
-            </div>
-            <button className="relative p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell size={20} className="text-gray-600" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm">
-              <Plus size={20} />
-              Add Tire
-            </button>
-          </div>
-        </div>
-      </div>
-
       <main className="flex flex-col gap-6">
           {/* Stats Grid - 4 cards horizontally */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
