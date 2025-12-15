@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useHeader } from '@/components/HeaderContext'
 import { Download, FileText, TrendingUp, DollarSign, Gauge, BarChart3 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -79,15 +80,14 @@ export default function ReportsPage() {
   const [tireBrand, setTireBrand] = useState('all');
   const [reportType, setReportType] = useState('comprehensive');
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tire Usage Reports</h1>
-          <p className="text-gray-600">Generate comprehensive reports and analyze tire performance</p>
-        </div>
-        <div className="flex gap-3">
+  const { setHeader } = useHeader();
+
+  React.useEffect(() => {
+    setHeader({
+      title: 'Tire Usage Reports',
+      subtitle: 'Generate comprehensive reports and analyze tire performance',
+      actions: (
+        <>
           <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium">
             <Download className="w-5 h-5" />
             Export
@@ -96,8 +96,15 @@ export default function ReportsPage() {
             <FileText className="w-5 h-5" />
             Generate PDF
           </button>
-        </div>
-      </div>
+        </>
+      )
+    })
+    return () => setHeader({})
+  }, [setHeader])
+
+  return (
+    <div className="space-y-6">
+      {/* Header provided by TopRibbon */}
 
       {/* Report Filters */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">

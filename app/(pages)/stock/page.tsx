@@ -6,6 +6,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Truck } from "lucide-react";
 import AddTyreForm from "@/components/add-new-tyre-form";
 import { useStockOverviewQuery } from "./query";
+import { useEffect } from "react";
+import { useHeader } from '@/components/HeaderContext'
 
 export default function StockPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,6 +15,22 @@ export default function StockPage() {
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
+
+  const { setHeader } = useHeader();
+
+  useEffect(() => {
+    setHeader({
+      title: 'Tyre Stock',
+      subtitle: 'Current inventory overview',
+      searchPlaceholder: 'Search tyre SKU, model...',
+      actions: (
+        <button onClick={handleOpenModal} className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm">
+          Add Tyre
+        </button>
+      )
+    });
+    return () => setHeader({});
+  }, [setHeader]);
 
   useEffect(() => {
     document.body.style.overflow = isModalOpen ? "hidden" : "auto";

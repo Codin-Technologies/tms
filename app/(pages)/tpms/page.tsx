@@ -173,6 +173,38 @@ const TireMonitoringDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const { setHeader } = useHeader();
+
+  useEffect(() => {
+    setHeader({
+      title: 'TPMS',
+      subtitle: 'Real-time Tire Pressure Monitoring System',
+      actions: (
+        <>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-gray-700 font-medium">System Online</span>
+          </div>
+          <span className="text-gray-600">Last Updated: {currentTime.toLocaleTimeString()}</span>
+        </>
+      )
+    })
+    const id = setInterval(() => {
+      setHeader((prev) => ({ ...prev, actions: (
+        <>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-gray-700 font-medium">System Online</span>
+          </div>
+          <span className="text-gray-600">Last Updated: {new Date().toLocaleTimeString()}</span>
+        </>
+      ) }));
+    }, 3000);
+
+    return () => { clearInterval(id); setHeader({}); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTime])
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}

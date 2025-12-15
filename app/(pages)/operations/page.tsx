@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useHeader } from '@/components/HeaderContext'
 import TaskColumn from './components/TaskColumn';
 import VehicleFleetList from './components/VehicleFleetList';
 import TireConfigurationViewer from './components/TireConfigurationViewer';
@@ -110,6 +111,24 @@ const mockVehicles = [
 export default function OperationsPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<typeof mockVehicles[0] | null>(null);
   const [vehicles, setVehicles] = useState(mockVehicles);
+
+  const { setHeader } = useHeader();
+
+  useEffect(() => {
+    // set page header
+    try {
+      setHeader({
+        title: 'Tire Operations',
+        subtitle: 'Manage tire rotations, inspections, and replacements',
+        searchPlaceholder: 'Search vehicles, tasks...',
+        // actions omitted - actions are available inside the page content
+      });
+    } catch (e) {}
+    return () => {
+      try { setHeader({}); } catch (e) {}
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Mock tire configuration for selected vehicle
   const tireConfiguration = {

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useHeader } from '@/components/HeaderContext'
 import { Search, Download, Plus, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import {  useInspectionOverviewQuery } from './query';
 
@@ -160,15 +161,15 @@ export default function InspectionPage() {
   const endIndex = startIndex + itemsPerPage;
   const currentRecords = filteredRecords.slice(startIndex, endIndex);
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tire Inspections</h1>
-          <p className="text-gray-600">Monitor and track tire inspection records across your fleet</p>
-        </div>
-        <div className="flex gap-3">
+  const { setHeader } = useHeader();
+
+  React.useEffect(() => {
+    setHeader({
+      title: 'Tire Inspections',
+      subtitle: 'Monitor and track tire inspection records across your fleet',
+      searchPlaceholder: 'Vehicle ID, Inspector...',
+      actions: (
+        <>
           <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium">
             <Download className="w-5 h-5" />
             Export
@@ -177,8 +178,15 @@ export default function InspectionPage() {
             <Plus className="w-5 h-5" />
             New Inspection
           </button>
-        </div>
-      </div>
+        </>
+      )
+    })
+    return () => setHeader({})
+  }, [setHeader])
+
+  return (
+    <div className="space-y-6">
+      {/* NOTE: Header moved to TopRibbon via useHeader */}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
