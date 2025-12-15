@@ -9,6 +9,11 @@ interface Vehicle {
   model: string;
   status: 'Active' | 'Service';
   tyres: string;
+  // New fields for bulk tyres and axle configuration
+  bulkTyres?: boolean;
+  bulkTyreCount?: number;
+  axles?: number;
+  tyresPerAxle?: number;
   lastService: string;
 }
 
@@ -31,6 +36,10 @@ export default function VehicleFleetList({
     model: '',
     status: 'Active',
     tyres: '',
+    bulkTyres: false,
+    bulkTyreCount: 0,
+    axles: 2,
+    tyresPerAxle: 2,
     lastService: '',
   });
 
@@ -166,6 +175,55 @@ export default function VehicleFleetList({
                   />
                 </div>
               </div>
+              {/* Bulk Tyres Option */}
+              <div className="flex items-center gap-3">
+                <input
+                  id="bulk-tyres"
+                  type="checkbox"
+                  checked={!!newVehicle.bulkTyres}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, bulkTyres: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="bulk-tyres" className="text-sm font-medium">Add bulk tyres</label>
+                {newVehicle.bulkTyres && (
+                  <input
+                    type="number"
+                    min={0}
+                    value={newVehicle.bulkTyreCount}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, bulkTyreCount: Number(e.target.value) })}
+                    className="w-24 px-3 py-1 border border-gray-300 rounded-lg"
+                    placeholder="Count"
+                  />
+                )}
+              </div>
+
+              {/* Axle configuration */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Axles</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newVehicle.axles}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, axles: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tyres / Axle</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newVehicle.tyresPerAxle}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, tyresPerAxle: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Computed Tyres</label>
+                  <input value={newVehicle.bulkTyres ? `${newVehicle.bulkTyreCount} (bulk)` : `${(newVehicle.axles || 0) * (newVehicle.tyresPerAxle || 0)} total`} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50" />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Tyres</label>
                 <input
@@ -185,8 +243,10 @@ export default function VehicleFleetList({
                 <button
                   onClick={() => {
                     if (!newVehicle.id || !newVehicle.name) return;
-                    onAddVehicle?.(newVehicle);
-                    setNewVehicle({ id: '', name: '', model: '', status: 'Active', tyres: '', lastService: '' });
+                    // Ensure tyres field reflects configuration when saved
+                    const computedTyres = newVehicle.bulkTyres ? `${newVehicle.bulkTyreCount} (bulk)` : `${(newVehicle.axles || 0) * (newVehicle.tyresPerAxle || 0)}`;
+                    onAddVehicle?.({ ...newVehicle, tyres: computedTyres });
+                    setNewVehicle({ id: '', name: '', model: '', status: 'Active', tyres: '', lastService: '', bulkTyres: false, bulkTyreCount: 0, axles: 2, tyresPerAxle: 2 });
                     setIsModalOpen(false);
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
