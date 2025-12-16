@@ -20,6 +20,35 @@
   }
 }
 
+/* Scrollbar utilities: visible track + thumb for WebKit and Firefox */
+@layer utilities {
+  .scrollbar-visible {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.3) rgba(148, 163, 184, 0.06);
+  }
+
+  .scrollbar-visible::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-visible::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.06); /* gray-300 @ low opacity */
+    border-radius: 9999px;
+  }
+
+  .scrollbar-visible::-webkit-scrollbar-thumb {
+    background: rgba(2, 132, 199, 0.25); /* teal-ish thumb */
+    border-radius: 9999px;
+    border: 2px solid rgba(255,255,255,0.0);
+  }
+
+  .scrollbar-visible:hover::-webkit-scrollbar-thumb {
+    background: rgba(2, 132, 199, 0.45);
+  }
+}
+
 /* Apply Inter font globally */
 body {
   background: var(--background);

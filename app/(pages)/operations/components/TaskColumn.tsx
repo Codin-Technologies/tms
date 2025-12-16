@@ -29,7 +29,7 @@ export default function TaskColumn({ title, count, tasks, icon }: TaskColumnProp
           {count}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-label={`${title} tasks`}>
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-visible" role="list" aria-label={`${title} tasks`}>
         {tasks.map((task) => (
           <TaskCard key={task.id} {...task} />
         ))}
