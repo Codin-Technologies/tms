@@ -27,7 +27,11 @@ export default function TaskCard({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+    <div
+      tabIndex={0}
+      role="listitem"
+      className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-teal-500"
+    >
       <div className="text-sm text-gray-500 mb-2">{id}</div>
       <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
       <p className="text-sm text-gray-600 mb-3">{vehicle}</p>

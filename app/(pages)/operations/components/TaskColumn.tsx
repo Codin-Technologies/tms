@@ -21,7 +21,7 @@ interface TaskColumnProps {
 
 export default function TaskColumn({ title, count, tasks, icon }: TaskColumnProps) {
   return (
-    <div className="bg-white rounded-lg p-4 border border-gray-200">
+    <div className="bg-white rounded-lg p-4 border border-gray-200 max-h-[36rem] flex flex-col">
       <div className="flex items-center gap-2 mb-4">
         {icon && <div className="text-lg">{icon}</div>}
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -29,7 +29,7 @@ export default function TaskColumn({ title, count, tasks, icon }: TaskColumnProp
           {count}
         </span>
       </div>
-      <div className="space-y-3 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-label={`${title} tasks`}>
         {tasks.map((task) => (
           <TaskCard key={task.id} {...task} />
         ))}
