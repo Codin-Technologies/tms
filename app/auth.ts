@@ -9,6 +9,16 @@ class InvalidLoginError extends CredentialsSignin {
   }
 }
 
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+if (!NEXTAUTH_SECRET) {
+  // In local dev provide a non-secret fallback so next-auth doesn't throw a MissingSecret error.
+  // This is intentionally permissive for developer convenience; set NEXTAUTH_SECRET in production.
+  // eslint-disable-next-line no-console
+  console.warn(
+    "NEXTAUTH_SECRET is not set. Using development fallback secret — set NEXTAUTH_SECRET in environment for production."
+  );
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true, // Add this line
   providers: [
@@ -50,4 +60,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
+  // Pass the secret explicitly; use the env value when present or a development fallback
+  secret: NEXTAUTH_SECRET ?? "dev-insecure-secret",
 });

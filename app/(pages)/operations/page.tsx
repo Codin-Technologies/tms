@@ -210,7 +210,7 @@ export default function OperationsPage() {
       {/* Page content uses the global TopRibbon for title/subtitle */}
 
       {/* Task Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[60vh]">
         <TaskColumn
           title="New Tasks"
           count={4}

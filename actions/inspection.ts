@@ -2,15 +2,27 @@
 
 export async function inspectionOverviewData() {
   try {
-    const response = await fetch(
-      `${process.env.API_BASE_URL}/inspection/overview`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
+    const base = process.env.API_BASE_URL;
+    if (!base) {
+      console.warn("API_BASE_URL is not set; returning empty inspection overview for dev.");
+      return {
+        timestamp: new Date(),
+        message: "API_BASE_URL not configured",
+        data: {
+          totalInspections: { value: 0, monthGrowth: 0 },
+          failedInspections: { value: 0, change: 0, direction: "none" },
+          passRate: { value: 0, change: 0, direction: "none" },
+          pendingReviews: { value: "0", status: "ok" },
         },
-      }
-    );
+      };
+    }
+
+    const response = await fetch(`${base}/inspection/overview`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -28,7 +40,13 @@ export async function inspectionOverviewData() {
 
 export async function inspectionData() {
   try {
-    const response = await fetch(`${process.env.API_BASE_URL}/inspection`, {
+    const base = process.env.API_BASE_URL;
+    if (!base) {
+      console.warn("API_BASE_URL is not set; returning empty inspection data for dev.");
+      return { timestamp: new Date(), message: "API_BASE_URL not configured", data: [] };
+    }
+
+    const response = await fetch(`${base}/inspection`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
