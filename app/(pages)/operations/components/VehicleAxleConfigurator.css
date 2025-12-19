@@ -1,0 +1,48 @@
+.configurator-container {
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.controls {
+  margin-bottom: 20px;
+}
+
+.vehicle-diagram {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.truck-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.axle-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wheel {
+  width: 20px;
+  height: 40px;
+  background-color: #333;
+  border-radius: 4px;
+}
+
+.wheel.driven {
+  background-color: #1a1a1a;
+  border: 2px solid #000;
+}
+
+.axle-line {
+  width: 100px;
+  height: 4px;
+  background-color: #666;
+}

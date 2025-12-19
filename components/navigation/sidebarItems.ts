@@ -16,41 +16,41 @@ export const sidebarItems: {
     href: string;
     icon: IconType;
 }[] = [
-    {
-        name: "Dashboard",
-        href: "/",
-        icon: Home,
-    },
-    {
-        name: "Tyre Stock",
-        href: "/stock",
-        icon: Box,
-    },
-    {
-        name: "Tyre Operations",
-        href: "/operations",
-        icon: Activity,
-    },
-    {
-        name: "TPMS",
-        href: "/tpms",
-        icon: Users,
-    },
-    {
-        name: "Inspection",
-        href: "/inspection",
-        icon: CheckCircle,
-    },
-    {
-        name: "Reports",
-        href: "/reports",
-        icon: BarChart,
-    },
-    {
-        name: "Users",
-        href: "/users",
-        icon: User,
-    },
-];
+        {
+            name: "Dashboard",
+            href: "/",
+            icon: Home,
+        },
+        {
+            name: "Inventory",
+            href: "/stock",
+            icon: Box,
+        },
+        {
+            name: "Operations",
+            href: "/operations",
+            icon: Activity,
+        },
+        {
+            name: "TPMS",
+            href: "/tpms",
+            icon: Users,
+        },
+        {
+            name: "Inspection",
+            href: "/inspection",
+            icon: CheckCircle,
+        },
+        {
+            name: "Reports",
+            href: "/reports",
+            icon: BarChart,
+        },
+        {
+            name: "Users",
+            href: "/users",
+            icon: User,
+        },
+    ];
 
 export default sidebarItems;

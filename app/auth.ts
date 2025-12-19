@@ -20,46 +20,82 @@ if (!NEXTAUTH_SECRET) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true, // Add this line
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
         username: { label: "Username" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (Credentials) => {
-        if (!Credentials?.username || !Credentials?.password) {
+      authorize: async (credentials) => {
+        if (!credentials?.username || !credentials?.password) {
           throw new InvalidLoginError(
             "Please provide both username and password"
           );
         }
 
-        const user = await fetch("https://dummyjson.com/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: Credentials.username,
-            password: Credentials.password,
-            expiresInMins: 30,
-          }),
-          credentials: "include",
-        });
+        try {
+          const res = await fetch("https://tire-backend-h8tz.onrender.com/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials.username, // mapping username field to email
+              password: credentials.password,
+            }),
+          });
 
-        const userData = await user.json();
+          const data = await res.json();
 
-        console.log("User Data:", userData);
+          if (!res.ok) {
+            throw new InvalidLoginError(data.message || "Invalid username or password");
+          }
 
-        if (user.ok && userData) {
-          return {...userData, name: userData.firstName + " " + userData.lastName};
-        } else {
-          throw new InvalidLoginError("Invalid username or password");
+          // Backend returns: { token: "...", user: { id, name, email, ... } }
+          if (data && data.token && data.user) {
+            return {
+              id: String(data.user.id), // Ensure ID is a string
+              name: data.user.name,
+              email: data.user.email,
+              accessToken: data.token, // Use 'token' from backend response
+            };
+          }
+
+          // If response doesn't have expected structure, log it for debugging
+          console.error("Unexpected backend response structure:", data);
+          throw new InvalidLoginError("Invalid response from server");
+
+        } catch (error) {
+          if (error instanceof InvalidLoginError) {
+            throw error;
+          }
+          console.error("Login error:", error);
+          throw new InvalidLoginError("An unexpected error occurred");
         }
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.accessToken = user.accessToken;
+        token.loginTime = Date.now(); // Track login time
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.accessToken) {
+        session.accessToken = token.accessToken as string;
+      }
+      return session;
+    },
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 60, // 1 hour in seconds
+    updateAge: 10 * 60, // Update session every 10 minutes of activity
+  },
   pages: {
     signIn: "/login",
   },
-  // Pass the secret explicitly; use the env value when present or a development fallback
   secret: NEXTAUTH_SECRET ?? "dev-insecure-secret",
 });

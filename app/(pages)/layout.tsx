@@ -2,21 +2,21 @@ import SidebarNav from "@/components/navigation/sidebarNav";
 import { ReactNode } from "react";
 import { HeaderProvider } from "@/components/HeaderContext";
 import TopRibbon from "@/components/TopRibbon";
+import ActivityTracker from "@/components/ActivityTracker";
 
 const TMSLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      {/* Header (Top ribbon) now provided to all pages via HeaderProvider */}
+      {/* Activity Tracker for session timeout */}
+      <ActivityTracker />
 
       {/* Sidebar + main content */}
       <div className="flex-1 flex overflow-hidden">
-        <SidebarNav /> {/* Updated: Direct import, no wrapper needed */}
+        <SidebarNav />
         <div className="flex-1 overflow-auto">
           <HeaderProvider>
-            <div className="p-8">
-              <TopRibbon />
-              <div className="mt-6">{children}</div>
-            </div>
+            <TopRibbon />
+            <div className="p-8 pt-6">{children}</div>
           </HeaderProvider>
         </div>
       </div>

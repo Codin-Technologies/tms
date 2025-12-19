@@ -8,8 +8,8 @@ export default function TopRibbon() {
   const { header } = useHeader();
 
   return (
-    <div className="sticky top-0 z-20 bg-transparent">
-      <div className="bg-white p-6 border-b border-gray-200">
+    <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
+      <div className="px-8 py-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{header.title}</h1>

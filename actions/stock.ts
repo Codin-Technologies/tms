@@ -1,68 +1,80 @@
 "use server";
 
+import { auth } from "@/app/auth";
+
 export const fetchTyreStockData = async () => {
   try {
-    const base = process.env.API_BASE_URL;
-    if (!base) {
-      // Dev-friendly fallback: return an empty TyreStock-shaped object so pages can render
-      console.warn("API_BASE_URL is not set; returning empty tyre stock data for dev.");
-      return {
-        timestamp: new Date(),
-        message: "API_BASE_URL not configured",
-        data: [] as any[],
-      };
+    const session = await auth();
+    if (!session?.accessToken) {
+      throw new Error("Unauthorized");
     }
 
-    const response = await fetch(`${base}/tyres`, {
-      method: "GET",
+    const res = await fetch("https://tire-backend-h8tz.onrender.com/api/stock/tires", {
       headers: {
-        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
       },
+      cache: "no-store",
     });
-    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch tyre stock data");
+    if (!res.ok) {
+      throw new Error("Failed to fetch tyre stock data");
     }
 
-    return data;
+    const allTyres = await res.json();
+
+    return {
+      timestamp: new Date(),
+      message: "Tyres fetched successfully",
+      data: allTyres,
+    };
   } catch (error) {
     throw new Error(
       (error as Error).message ||
-        "An unexpected error occurred while fetching tyre stock data"
+      "An unexpected error occurred while fetching tyre stock data"
     );
   }
 };
 
 export const overviewTyreStockData = async () => {
   try {
-    const base = process.env.API_BASE_URL;
-    if (!base) {
-      console.warn("API_BASE_URL is not set; returning empty tyre stock overview for dev.");
-      return {
-        timestamp: new Date(),
-        message: "API_BASE_URL not configured",
-        data: { total: "0", inuse: "0", instore: "0", needsreplacement: "0" },
-      };
+    const session = await auth();
+    if (!session?.accessToken) {
+      throw new Error("Unauthorized");
     }
 
-    const response = await fetch(`${base}/tyres/overview`, {
-      method: "GET",
+    const res = await fetch("https://tire-backend-h8tz.onrender.com/api/stock/dashboard", {
       headers: {
-        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
       },
     });
-    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch tyre stock overview");
+    if (!res.ok) {
+      throw new Error("Failed to fetch stock overview");
     }
 
-    return data;
+    const overview = await res.json();
+
+    // Map API response to UI expected format if needed
+    // Assuming API returns { totalTires, inUse, inStock, needsReplacement } or similar
+    // The previous code expected: { total, inuse, instore, needsreplacement }
+    // I will try to support likely casing from API or default to 0
+
+    const data = {
+      total: Number(overview.total || overview.totalTires || 0),
+      inuse: Number(overview.inUse || overview.inuse || 0),
+      instore: Number(overview.inStore || overview.instock || overview.inStock || 0),
+      needsreplacement: Number(overview.needsReplacement || overview.needsreplacement || 0),
+    };
+
+    return {
+      timestamp: new Date(),
+      message: "Overview fetched successfully",
+      data: data,
+    };
   } catch (error) {
     throw new Error(
       (error as Error).message ||
-        "An unexpected error occurred while fetching tyre stock overview"
+      "An unexpected error occurred while fetching tyre stock overview"
     );
   }
 };
