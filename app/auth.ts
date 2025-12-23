@@ -94,6 +94,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     maxAge: 60 * 60, // 1 hour in seconds
     updateAge: 10 * 60, // Update session every 10 minutes of activity
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        // Setting maxAge to 0 makes the cookie a session cookie (expires on browser close)
+        // But we still enforce 1-hour timeout via session.maxAge above
+        maxAge: undefined, // Session cookie - expires when browser closes
+      },
+    },
+  },
   pages: {
     signIn: "/login",
   },
