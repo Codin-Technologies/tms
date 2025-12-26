@@ -191,7 +191,10 @@ export default function OperationsPage() {
             <Download className="w-5 h-5" />
             Export
           </button>
-          <button className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2 font-medium">
+          <button 
+            onClick={() => router.push('/fleet/vehicles/new')}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2 font-medium"
+          >
             <Plus className="w-5 h-5" />
             Add Vehicle
           </button>

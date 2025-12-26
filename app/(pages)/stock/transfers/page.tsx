@@ -21,6 +21,12 @@ import {
     ShieldCheck,
     AlertTriangle,
     CheckCircle,
+    MapPin,
+    Building2,
+    ArrowUpRight,
+    ArrowDownLeft,
+    X,
+    Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,309 +79,530 @@ export default function StockTransfersPage() {
         alert("Transfer initiated successfully! Transaction ID: TR-" + Math.floor(Math.random() * 100000));
         setQuantity(0);
         setSelectedSkuId(null);
+        setFromLocationId("");
+        setToLocationId("");
+        setSelectedDealerId("");
+        setReason("");
     };
 
+    const handleReset = () => {
+        setSelectedSkuId(null);
+        setQuantity(0);
+        setFromLocationId("");
+        setToLocationId("");
+        setSelectedDealerId("");
+        setReason("");
+    };
+
+    const transferTypes = [
+        { id: 'Internal Transfer', label: 'Internal Transfer', icon: Warehouse, description: 'Move between locations', color: 'bg-blue-500' },
+        { id: 'Issue to Vehicle', label: 'Issue to Vehicle', icon: Truck, description: 'Assign to vehicle', color: 'bg-green-500' },
+        { id: 'Send to Dealer', label: 'Send to Dealer', icon: ArrowUpRight, description: 'Outbound to dealer', color: 'bg-orange-500' },
+        { id: 'Receive from Dealer', label: 'Receive from Dealer', icon: ArrowDownLeft, description: 'Inbound from dealer', color: 'bg-purple-500' },
+    ];
+
+    const isFormValid = selectedSkuId && fromLocationId && (toLocationId || selectedDealerId) && quantity > 0 && quantity <= currentLocStock;
+
+    // Get recent transfers for sidebar
+    const recentTransfers = mockTransferHistory.slice(0, 3);
+    const pendingTransfers = mockTransferHistory.filter(t => t.status === 'pending').length;
+    const completedToday = mockTransferHistory.filter(t => {
+        const today = new Date();
+        const transferDate = new Date(t.createdAt);
+        return transferDate.toDateString() === today.toDateString() && t.status === 'completed';
+    }).length;
+
     return (
-        <div className="mx-auto flex flex-col gap-6 w-full max-w-none pb-4 px-2">
-            {/* KPI Stat Cards Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatCard
-                    title="Total Transfers"
-                    value={mockTransferHistory.length}
-                    trend={{ value: "+12%", isPositive: true }}
-                    icon={<ArrowRightLeft className="w-5 h-5" />}
-                    iconClassName="bg-blue-50 text-blue-600 border-blue-100"
-                />
-                <StatCard
-                    title="Pending Approvals"
-                    value="3"
-                    badge={{ label: "Alert", variant: 'error' }}
-                    icon={<AlertCircle className="w-5 h-5" />}
-                    iconClassName="bg-red-50 text-red-600 border-red-100"
-                />
-                <StatCard
-                    title="Available Stock"
-                    value="5,128"
-                    badge={{ label: "Active", variant: 'success' }}
-                    icon={<CheckCircle className="w-5 h-5" />}
-                    iconClassName="bg-green-50 text-green-600 border-green-100"
-                />
-                <StatCard
-                    title="Low Stock SKUs"
-                    value="23"
-                    badge={{ label: "Monitor", variant: 'warning' }}
-                    icon={<AlertTriangle className="w-5 h-5" />}
-                    iconClassName="bg-orange-50 text-orange-600 border-orange-100"
-                />
-                <StatCard
-                    title="Safety Critical"
-                    value="42"
-                    badge={{ label: "Watch", variant: 'info' }}
-                    icon={<ShieldCheck className="w-5 h-5" />}
-                    iconClassName="bg-teal-50 text-teal-600 border-teal-100"
-                />
-            </div>
-
+        <div className="mx-auto flex flex-col gap-6">
             {/* Main Workspace */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col relative min-h-[70vh]">
-                {/* Tab Navigation & Toolbar */}
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/30 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-                        <button
-                            onClick={() => setActiveTab('new')}
-                            className={`flex items-center gap-2 px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg ${activeTab === 'new' ? 'bg-teal-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900'}`}
-                        >
-                            <Plus className="w-3 h-3" /> New Transfer
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('history')}
-                            className={`flex items-center gap-2 px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg ${activeTab === 'history' ? 'bg-teal-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900'}`}
-                        >
-                            <History className="w-3 h-3" /> History
-                        </button>
-                    </div>
-
-                    {activeTab === 'history' && (
-                        <div className="flex items-center gap-3">
-                            <div className="relative group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5 group-focus-within:text-teal-600 transition-colors" />
-                                <Input
-                                    placeholder="Search transfers..."
-                                    className="pl-9 h-10 w-64 bg-white border-gray-200 rounded-xl text-xs font-bold focus-visible:ring-teal-500"
-                                />
-                            </div>
-                            <div className="flex bg-white border border-gray-200 rounded-xl p-1 gap-1">
-                                <select className="bg-transparent text-[10px] font-black uppercase px-2 py-1 outline-none text-gray-500">
-                                    <option>All Brands</option>
-                                </select>
-                                <div className="w-px h-4 bg-gray-200 my-auto" />
-                                <select className="bg-transparent text-[10px] font-black uppercase px-2 py-1 outline-none text-gray-500">
-                                    <option>All Sizes</option>
-                                </select>
-                            </div>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {/* Tab Navigation */}
+                <div className="border-b border-gray-200 bg-gray-50/50">
+                    <div className="flex items-center justify-between px-6 py-4">
+                        <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                            <button
+                                onClick={() => setActiveTab('new')}
+                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                                    activeTab === 'new' 
+                                        ? 'bg-teal-600 text-white shadow-sm' 
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                <Plus className="w-4 h-4" />
+                                New Transfer
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                                    activeTab === 'history' 
+                                        ? 'bg-teal-600 text-white shadow-sm' 
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                <History className="w-4 h-4" />
+                                History
+                            </button>
                         </div>
-                    )}
+
+                        {activeTab === 'history' && (
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                    <Input
+                                        placeholder="Search transfers..."
+                                        className="pl-10 h-10 w-64 bg-white border-gray-200 focus:ring-teal-500"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
                     {activeTab === 'new' ? (
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12">
-                                <div className="lg:col-span-8 space-y-8">
-                                    {/* Section 1: Context */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-black text-gray-900 flex items-center gap-2 uppercase tracking-[0.2em] text-[10px]">
-                                                <span className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center text-[10px]">01</span>
-                                                Transfer Context
-                                            </h3>
-                                            <Badge variant="outline" className="text-[9px] font-black uppercase bg-teal-50/50 text-teal-600 border-teal-100 tracking-tighter">Step 1 of 3</Badge>
+                        <div className="p-6 lg:p-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Main Form Section */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    {/* Step 1: Transfer Type */}
+                                    <Card className="p-6 border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm">
+                                                1
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">Transfer Type</h3>
+                                                <p className="text-sm text-gray-500">Select the type of movement</p>
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                                            <div className="space-y-3 font-bold">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Movement Type</label>
-                                                <div className="grid grid-cols-2 md:grid-cols-1 gap-1.5">
-                                                    {[
-                                                        { id: 'Internal Transfer', label: 'Internal', icon: Warehouse },
-                                                        { id: 'Issue to Vehicle', label: 'Vehicle', icon: Truck },
-                                                        { id: 'Send to Dealer', label: 'Dealer Out', icon: RefreshCw },
-                                                        { id: 'Receive from Dealer', label: 'Dealer In', icon: Package },
-                                                    ].map((t) => (
-                                                        <button
-                                                            key={t.id}
-                                                            onClick={() => setTransferType(t.id as TransferType)}
-                                                            className={`flex items-center gap-3 p-3 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${transferType === t.id ? 'bg-white border-teal-500 text-teal-600 shadow-sm ring-1 ring-teal-500' : 'bg-white border-transparent text-gray-400 hover:border-gray-200 hover:text-gray-600'}`}
-                                                        >
-                                                            <t.icon className="w-3.5 h-3.5" /> {t.label}
-                                                        </button>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {transferTypes.map((type) => {
+                                                const Icon = type.icon;
+                                                const isSelected = transferType === type.id;
+                                                return (
+                                                    <button
+                                                        key={type.id}
+                                                        onClick={() => setTransferType(type.id as TransferType)}
+                                                        className={`p-4 rounded-lg border-2 transition-all text-left ${
+                                                            isSelected
+                                                                ? 'border-teal-500 bg-teal-50 shadow-sm'
+                                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`w-10 h-10 rounded-lg ${type.color} text-white flex items-center justify-center flex-shrink-0`}>
+                                                                <Icon className="w-5 h-5" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`font-semibold text-sm ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>
+                                                                    {type.label}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 mt-0.5">{type.description}</p>
+                                                            </div>
+                                                            {isSelected && (
+                                                                <CheckCircle2 className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </Card>
+
+                                    {/* Step 2: Locations */}
+                                    <Card className="p-6 border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                                                fromLocationId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                                2
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">Locations</h3>
+                                                <p className="text-sm text-gray-500">Select source and destination</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-sm font-medium text-gray-700">From Location</label>
+                                                    <button 
+                                                        onClick={() => setShowManageLocations(true)} 
+                                                        className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                                                    >
+                                                        Manage Locations
+                                                    </button>
+                                                </div>
+                                                <select
+                                                    className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                                                    value={fromLocationId}
+                                                    onChange={(e) => setFromLocationId(e.target.value)}
+                                                >
+                                                    <option value="">Select source location...</option>
+                                                    {mockLocations.map(loc => (
+                                                        <option key={loc.id} value={loc.id}>
+                                                            {loc.name} ({loc.type})
+                                                        </option>
                                                     ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="flex justify-center py-2">
+                                                <div className="w-10 h-10 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center">
+                                                    <ArrowRightLeft className="w-5 h-5 text-teal-600" />
                                                 </div>
                                             </div>
-                                            <div className="md:col-span-3 space-y-6">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between px-1">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">From Location</label>
-                                                        <button onClick={() => setShowManageLocations(true)} className="text-[10px] text-teal-600 font-extrabold hover:underline uppercase tracking-tight">Manage</button>
-                                                    </div>
-                                                    <select
-                                                        className="w-full p-4 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none ring-teal-500 focus:ring-2"
-                                                        value={fromLocationId}
-                                                        onChange={(e) => setFromLocationId(e.target.value)}
-                                                    >
-                                                        <option value="">Select source...</option>
-                                                        {mockLocations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} ({loc.type})</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between px-1">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">To Destination</label>
-                                                        {transferType.includes('Dealer') && <button onClick={() => setShowManageDealers(true)} className="text-[10px] text-teal-600 font-extrabold hover:underline uppercase tracking-tight">Manage</button>}
-                                                    </div>
-                                                    {transferType.includes('Dealer') ? (
-                                                        <select
-                                                            className="w-full p-4 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none ring-teal-500 focus:ring-2"
-                                                            value={selectedDealerId}
-                                                            onChange={(e) => setSelectedDealerId(e.target.value)}
+
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-sm font-medium text-gray-700">
+                                                        {transferType.includes('Dealer') ? 'To Dealer' : 'To Location'}
+                                                    </label>
+                                                    {transferType.includes('Dealer') && (
+                                                        <button 
+                                                            onClick={() => setShowManageDealers(true)} 
+                                                            className="text-xs text-teal-600 hover:text-teal-700 font-medium"
                                                         >
-                                                            <option value="">Select partner dealer...</option>
-                                                            {mockDealers.map(dlr => <option key={dlr.id} value={dlr.id}>{dlr.name} ({dlr.category})</option>)}
-                                                        </select>
-                                                    ) : (
-                                                        <select
-                                                            className="w-full p-4 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none ring-teal-500 focus:ring-2"
-                                                            value={toLocationId}
-                                                            onChange={(e) => setToLocationId(e.target.value)}
-                                                        >
-                                                            <option value="">Select destination...</option>
-                                                            {mockLocations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} ({loc.type})</option>)}
-                                                        </select>
+                                                            Manage Dealers
+                                                        </button>
                                                     )}
                                                 </div>
+                                                {transferType.includes('Dealer') ? (
+                                                    <select
+                                                        className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                                                        value={selectedDealerId}
+                                                        onChange={(e) => setSelectedDealerId(e.target.value)}
+                                                    >
+                                                        <option value="">Select dealer...</option>
+                                                        {mockDealers.map(dlr => (
+                                                            <option key={dlr.id} value={dlr.id}>
+                                                                {dlr.name} ({dlr.category})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <select
+                                                        className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                                                        value={toLocationId}
+                                                        onChange={(e) => setToLocationId(e.target.value)}
+                                                    >
+                                                        <option value="">Select destination...</option>
+                                                        {mockLocations.map(loc => (
+                                                            <option key={loc.id} value={loc.id}>
+                                                                {loc.name} ({loc.type})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </Card>
 
-                                    {/* Section 2: SKU */}
-                                    <div className="space-y-4">
-                                        <h3 className="font-black text-gray-900 flex items-center gap-2 uppercase tracking-[0.2em] text-[10px]">
-                                            <span className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center text-[10px]">02</span>
-                                            SKU Selection
-                                        </h3>
-                                        <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-6">
+                                    {/* Step 3: SKU Selection */}
+                                    <Card className="p-6 border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                                                selectedSkuId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                                3
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">SKU Selection</h3>
+                                                <p className="text-sm text-gray-500">Choose the product to transfer</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
                                             <select
-                                                className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+                                                className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                                                 value={selectedSkuId || ""}
                                                 onChange={(e) => setSelectedSkuId(Number(e.target.value))}
                                             >
-                                                <option value="">Select SKU Model...</option>
-                                                {skus?.map(sku => <option key={sku.id} value={sku.id}>{sku.brand} {sku.model} - {sku.size}</option>)}
+                                                <option value="">Select SKU...</option>
+                                                {skus?.map(sku => (
+                                                    <option key={sku.id} value={sku.id}>
+                                                        {sku.brand} {sku.model} - {sku.size}
+                                                    </option>
+                                                ))}
                                             </select>
 
                                             {selectedSku && (
-                                                <div className="p-5 rounded-2xl bg-white border border-teal-100 shadow-sm flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
-                                                            <Package className="w-6 h-6" />
+                                                <div className="p-4 bg-gradient-to-br from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                                                                <Package className="w-6 h-6 text-teal-600" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold text-gray-900">{selectedSku.brand} {selectedSku.model}</p>
+                                                                <p className="text-sm text-gray-600">{selectedSku.size}</p>
+                                                                <p className="text-xs text-gray-500 mt-1">SKU: {selectedSku.skuCode}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="space-y-0.5">
-                                                            <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest">Asset Details</p>
-                                                            <p className="font-black text-gray-900 text-sm tracking-tight">{selectedSku.brand} {selectedSku.model}</p>
-                                                            <p className="text-[10px] text-gray-400 font-bold uppercase">{selectedSku.size}</p>
+                                                        <div className="text-right">
+                                                            <p className="text-xs text-gray-500 font-medium mb-1">Available Stock</p>
+                                                            <p className="text-2xl font-bold text-teal-600">{currentLocStock}</p>
+                                                            <p className="text-xs text-gray-400">units</p>
                                                         </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Stock @ Source</p>
-                                                        <p className="text-3xl font-black text-gray-900 tracking-tighter">{currentLocStock}</p>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    </Card>
 
-                                    {/* Section 3: Quantity */}
-                                    <div className="space-y-4">
-                                        <h3 className="font-black text-gray-900 flex items-center gap-2 uppercase tracking-[0.2em] text-[10px]">
-                                            <span className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center text-[10px]">03</span>
-                                            Quantity & Notes
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Units to Move</label>
+                                    {/* Step 4: Quantity & Notes */}
+                                    <Card className="p-6 border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                                                quantity > 0 && quantity <= currentLocStock ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                                4
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">Quantity & Notes</h3>
+                                                <p className="text-sm text-gray-500">Specify amount and reason</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-700">Quantity</label>
                                                 <div className="relative">
                                                     <Input
                                                         type="number"
-                                                        className="text-3xl font-black h-16 rounded-2xl border-gray-200 focus:ring-teal-500 bg-white"
+                                                        className="h-14 text-2xl font-bold text-center pr-12 border-gray-300 focus:ring-2 focus:ring-teal-500"
                                                         value={quantity === 0 ? "" : quantity}
                                                         onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                                                        placeholder="0"
+                                                        min="0"
+                                                        max={currentLocStock}
                                                     />
-                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-wider">Units</span>
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                                                        units
+                                                    </span>
                                                 </div>
                                                 {quantity > currentLocStock && (
-                                                    <p className="text-[10px] text-red-500 font-black flex items-center gap-1.5 pl-1 uppercase italic">
-                                                        <AlertCircle className="w-3 h-3" /> Insufficient stock
-                                                    </p>
+                                                    <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded-md">
+                                                        <AlertCircle className="w-4 h-4" />
+                                                        <span>Insufficient stock available</span>
+                                                    </div>
+                                                )}
+                                                {quantity > 0 && quantity <= currentLocStock && (
+                                                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-md">
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                        <span>Stock available</span>
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div className="md:col-span-2 space-y-3">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Audit Note</label>
+                                            <div className="md:col-span-2 space-y-2">
+                                                <label className="text-sm font-medium text-gray-700">Reason / Notes</label>
                                                 <textarea
                                                     rows={3}
-                                                    className="w-full p-4 rounded-2xl bg-white border border-gray-200 text-xs font-bold focus:ring-2 focus:ring-teal-500 outline-none resize-none placeholder:text-gray-300"
-                                                    placeholder="Reason for transfer..."
+                                                    className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none resize-none placeholder:text-gray-400"
+                                                    placeholder="Enter reason for transfer..."
                                                     value={reason}
                                                     onChange={(e) => setReason(e.target.value)}
                                                 />
                                             </div>
                                         </div>
-                                    </div>
+                                    </Card>
                                 </div>
 
-                                <div className="lg:col-span-4 lg:sticky lg:top-6 lg:h-fit">
-                                    <div className="space-y-6">
-                                        <Card className="p-0 overflow-hidden shadow-xl border border-gray-100 rounded-2xl">
-                                            <div className="bg-teal-600 p-6 text-white relative overflow-hidden">
-                                                <div className="relative z-10 flex items-center justify-between">
-                                                    <h4 className="font-black uppercase tracking-[0.2em] text-[10px]">Summary</h4>
-                                                    <TrendingUp className="w-4 h-4 opacity-50" />
-                                                </div>
-                                                <div className="absolute top-0 right-0 p-4 opacity-10 scale-150">
-                                                    <ArrowRightLeft className="w-24 h-24" />
-                                                </div>
+                                {/* Summary Sidebar */}
+                                <div className="lg:col-span-1">
+                                    <div className="lg:sticky lg:top-6 space-y-6">
+                                        {/* Transfer Summary Card */}
+                                        <Card className="p-6 border-gray-200 shadow-lg bg-gradient-to-br from-teal-50 to-white">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <h4 className="font-semibold text-gray-900">Transfer Summary</h4>
+                                                <TrendingUp className="w-5 h-5 text-teal-600" />
                                             </div>
-                                            <div className="p-5 space-y-5">
-                                                <div className="space-y-6">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="space-y-1">
-                                                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Payload</p>
-                                                            <p className="text-lg font-black text-gray-900 tracking-tight">{quantity} Unit(s)</p>
-                                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight max-w-[150px] truncate">{selectedSku ? `${selectedSku.brand} ${selectedSku.model}` : 'No SKU Selected'}</p>
-                                                        </div>
-                                                        <Badge variant="outline" className="text-[8px] font-black uppercase text-teal-600 bg-teal-50/30 border-teal-100 tracking-tighter px-2">{transferType}</Badge>
+                                            <div className="space-y-6">
+                                                {/* Transfer Details */}
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium mb-2">TRANSFER TYPE</p>
+                                                        <Badge variant="outline" className="bg-white text-teal-700 border-teal-200">
+                                                            {transferType}
+                                                        </Badge>
                                                     </div>
 
-                                                    <div className="space-y-3">
-                                                        <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Routing Path</p>
-                                                        <div className="space-y-1.5">
-                                                            <div className="bg-gray-50 p-3 rounded-xl flex items-center gap-3 text-[11px] font-black text-gray-600 border border-gray-100">
-                                                                <div className="w-5 h-5 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-[9px] text-gray-400">A</div>
-                                                                <span className="truncate">{fromLocation?.name || '---'}</span>
-                                                            </div>
-                                                            <div className="flex justify-center -my-2 relative z-10">
-                                                                <div className="bg-white p-1 rounded-full border border-gray-100 shadow-sm">
-                                                                    <ArrowRightLeft className="w-2 h-2 text-teal-500" />
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium mb-2">QUANTITY</p>
+                                                        <p className="text-2xl font-bold text-gray-900">{quantity || 0}</p>
+                                                        {selectedSku && (
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                {selectedSku.brand} {selectedSku.model}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Routing Path */}
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium mb-3">ROUTING PATH</p>
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                                                                    A
                                                                 </div>
+                                                                <span className="text-sm font-medium text-gray-700 flex-1">
+                                                                    {fromLocation?.name || 'Not selected'}
+                                                                </span>
                                                             </div>
-                                                            <div className="bg-gray-50 p-3 rounded-xl flex items-center gap-3 text-[11px] font-black text-gray-600 border border-gray-100">
-                                                                <div className="w-5 h-5 rounded-lg bg-teal-600 text-white flex items-center justify-center text-[9px]">B</div>
-                                                                <span className="truncate">{transferType.includes('Dealer') ? selectedDealer?.name : toLocation?.name || '---'}</span>
+                                                            <div className="flex justify-center">
+                                                                <ArrowRightLeft className="w-5 h-5 text-teal-600" />
+                                                            </div>
+                                                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                                                <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                                                                    B
+                                                                </div>
+                                                                <span className="text-sm font-medium text-gray-700 flex-1">
+                                                                    {transferType.includes('Dealer') 
+                                                                        ? (selectedDealer?.name || 'Not selected')
+                                                                        : (toLocation?.name || 'Not selected')
+                                                                    }
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-3 pt-6 border-t border-gray-50">
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between text-xs font-bold">
-                                                            <span className="text-gray-400 font-black uppercase tracking-tighter">Current</span>
-                                                            <span className="text-gray-900">{currentLocStock}</span>
+                                                {/* Stock Impact */}
+                                                {selectedSkuId && fromLocationId && (
+                                                    <div className="pt-6 border-t border-gray-200 space-y-3">
+                                                        <p className="text-xs text-gray-500 font-medium">STOCK IMPACT</p>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">Current Stock</span>
+                                                                <span className="font-semibold text-gray-900">{currentLocStock}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">Transfer Out</span>
+                                                                <span className="font-semibold text-red-600">-{quantity}</span>
+                                                            </div>
+                                                            <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                                                                <span className="text-sm font-medium text-teal-700">Projected Balance</span>
+                                                                <span className="text-xl font-bold text-teal-600">
+                                                                    {Math.max(0, currentLocStock - quantity)}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between text-xs font-bold">
-                                                            <span className="text-gray-400 font-black uppercase tracking-tighter">Impact</span>
-                                                            <span className="text-red-500 font-black">-{quantity}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center pt-3 mt-1 border-t border-dashed border-gray-100">
-                                                            <span className="text-[10px] font-black text-teal-600 uppercase tracking-tighter">Proj. Bal.</span>
-                                                            <span className="text-xl font-black text-teal-700 tracking-tighter">{currentLocStock - quantity}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {quantity > 0 && quantity <= currentLocStock && (
-                                                    <div className="p-3 bg-teal-50/50 rounded-xl flex items-start gap-2 border border-teal-100">
-                                                        <CheckCircle2 className="w-3 h-3 text-teal-600 mt-0.5 flex-shrink-0" />
-                                                        <p className="text-[9px] font-bold text-teal-800 leading-tight uppercase tracking-tight">Operation valid.</p>
                                                     </div>
                                                 )}
+
+                                                {/* Validation Status */}
+                                                {isFormValid && (
+                                                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+                                                        <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-green-900">Ready to Transfer</p>
+                                                            <p className="text-xs text-green-700 mt-0.5">All requirements met</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Card>
+
+                                        {/* Quick Stats Card */}
+                                        <Card className="p-6 border-gray-200 shadow-sm">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="font-semibold text-gray-900">Quick Stats</h4>
+                                                <History className="w-5 h-5 text-gray-400" />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                        <span className="text-sm text-gray-600">Pending</span>
+                                                    </div>
+                                                    <span className="font-semibold text-gray-900">{pendingTransfers}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                        <span className="text-sm text-gray-600">Completed Today</span>
+                                                    </div>
+                                                    <span className="font-semibold text-gray-900">{completedToday}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                                        <span className="text-sm text-gray-600">Total Transfers</span>
+                                                    </div>
+                                                    <span className="font-semibold text-gray-900">{mockTransferHistory.length}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+
+                                        {/* Recent Transfers Card */}
+                                        <Card className="p-6 border-gray-200 shadow-sm">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="font-semibold text-gray-900">Recent Transfers</h4>
+                                                <button 
+                                                    onClick={() => setActiveTab('history')}
+                                                    className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                                                >
+                                                    View All
+                                                </button>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {recentTransfers.length > 0 ? (
+                                                    recentTransfers.map((transfer, index) => {
+                                                        const sku = skus?.find((s: any) => s.id === transfer.skuId);
+                                                        return (
+                                                            <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                                                            {sku ? `${sku.brand} ${sku.model}` : 'Unknown SKU'}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                                            {transfer.quantity} units • {transfer.type}
+                                                                        </p>
+                                                                    </div>
+                                                                    <Badge 
+                                                                        variant="outline"
+                                                                        className={`text-xs ${
+                                                                            transfer.status === 'completed' 
+                                                                                ? 'bg-green-50 text-green-700 border-green-200' 
+                                                                                : transfer.status === 'pending'
+                                                                                ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                                                                : 'bg-red-50 text-red-700 border-red-200'
+                                                                        }`}
+                                                                    >
+                                                                        {transfer.status}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 text-center py-4">No recent transfers</p>
+                                                )}
+                                            </div>
+                                        </Card>
+
+                                        {/* Help/Info Card */}
+                                        <Card className="p-6 border-gray-200 shadow-sm bg-blue-50/50">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                    <Info className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-gray-900 mb-2">Transfer Tips</h4>
+                                                    <ul className="space-y-1.5 text-xs text-gray-600">
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-blue-600 mt-0.5">•</span>
+                                                            <span>Verify stock availability before transfer</span>
+                                                        </li>
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-blue-600 mt-0.5">•</span>
+                                                            <span>Add notes for audit trail</span>
+                                                        </li>
+                                                        <li className="flex items-start gap-2">
+                                                            <span className="text-blue-600 mt-0.5">•</span>
+                                                            <span>Check destination capacity</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                         </Card>
                                     </div>
@@ -389,28 +616,50 @@ export default function StockTransfersPage() {
                     )}
                 </div>
 
-                {/* Integrated Sticky Footer - Only for 'new' tab */}
+                {/* Sticky Footer - Only for 'new' tab */}
                 {activeTab === 'new' && (
-                    <div className="sticky bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 px-8 flex flex-wrap gap-4 justify-between items-center z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] transition-all">
+                    <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-6 py-4 flex flex-wrap gap-4 justify-between items-center shadow-lg">
                         <div className="flex items-center gap-6">
                             <div className="flex flex-col">
-                                <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.3em] mb-0.5">Configuration</span>
-                                <span className="text-xs font-black text-gray-900 uppercase tracking-wider">{quantity} unit move configured</span>
+                                <span className="text-xs text-gray-500 font-medium">Status</span>
+                                <span className="text-sm font-semibold text-gray-900">
+                                    {isFormValid ? 'Ready to transfer' : 'Complete all steps'}
+                                </span>
                             </div>
-                            <div className="hidden sm:flex -space-x-1.5">
-                                <div className="w-5 h-5 rounded-full bg-teal-500 border border-white flex items-center justify-center text-[9px] text-white font-black shadow-sm">1</div>
-                                <div className={`w-5 h-5 rounded-full border border-white flex items-center justify-center text-[9px] font-black shadow-sm ${selectedSkuId ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-400'}`}>2</div>
-                                <div className={`w-5 h-5 rounded-full border border-white flex items-center justify-center text-[9px] font-black shadow-sm ${quantity > 0 ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-400'}`}>3</div>
+                            <div className="hidden sm:flex items-center gap-2">
+                                {[1, 2, 3, 4].map((step) => {
+                                    const isComplete = 
+                                        (step === 1) ||
+                                        (step === 2 && fromLocationId && (toLocationId || selectedDealerId)) ||
+                                        (step === 3 && selectedSkuId) ||
+                                        (step === 4 && quantity > 0 && quantity <= currentLocStock);
+                                    return (
+                                        <div
+                                            key={step}
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                                isComplete
+                                                    ? 'bg-teal-600 text-white shadow-sm'
+                                                    : 'bg-gray-200 text-gray-400'
+                                            }`}
+                                        >
+                                            {step}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <Button variant="ghost" onClick={() => { setSelectedSkuId(null); setQuantity(0); }} className="text-gray-400 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest px-6 h-10 rounded-xl">
-                                Discard
+                            <Button 
+                                variant="outline" 
+                                onClick={handleReset}
+                                className="px-6"
+                            >
+                                Reset
                             </Button>
                             <Button
-                                disabled={!selectedSkuId || (!toLocationId && !selectedDealerId) || quantity === 0 || quantity > currentLocStock}
+                                disabled={!isFormValid}
                                 onClick={handleConfirm}
-                                className="bg-teal-600 hover:bg-teal-700 text-white px-10 h-10 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-teal-600/20 active:scale-95 transition-all"
+                                className="bg-teal-600 hover:bg-teal-700 text-white px-8 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Execute Transfer
                             </Button>

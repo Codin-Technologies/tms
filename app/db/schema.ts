@@ -52,6 +52,9 @@ export const tyres = pgTable("tyres", {
   size: text("size"),
   type: text("type"),
   plyRating: text("ply_rating"),
+  dotCode: text("dot_code"), // DOT (Department of Transportation) code - unique tire identifier
+  manufacturingWeek: integer("manufacturing_week"), // Week of manufacture (1-52)
+  manufacturingYear: integer("manufacturing_year"), // Year of manufacture (2 or 4 digits)
   purchaseDate: text("purchase_date"),
   purchaseCost: integer("purchase_cost").default(0),
   totalKm: integer("total_km").default(0),
