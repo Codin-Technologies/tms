@@ -23,7 +23,13 @@ function getStatusColor(status: string): string {
 
 // Add a prop for onAdd callback
 export function TyreTable({ onAdd }: { onAdd?: () => void }) {
-  const {isLoading, error, data: tyres} = useStockQuery()
+  const { isLoading, error, data: tyres } = useStockQuery()
+
+  const tyreList = tyres?.data || [];
+  console.log("TyreTable rendering with", tyreList.length, "tyres");
+  if (tyreList.length > 0) {
+    console.log("First tyre example:", tyreList[0]);
+  }
 
   const columns: ColumnDef<TyreDetails>[] = [
     { accessorKey: "serialNumber", header: "Serial Number" },
@@ -58,7 +64,7 @@ export function TyreTable({ onAdd }: { onAdd?: () => void }) {
   return (
     <DataTable
       columns={columns}
-      data={tyres? tyres.data : []}
+      data={tyres ? tyres.data : []}
       title={"Inventory"}
       onAdd={onAdd} // Use callback passed from StockPage
     />

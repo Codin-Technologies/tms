@@ -16,7 +16,7 @@ const TMSLayout = ({ children }: { children: ReactNode }) => {
         <div className="flex-1 overflow-auto">
           <HeaderProvider>
             <TopRibbon />
-            <div className="p-8 pt-6">{children}</div>
+            <div className="p-4 pt-6">{children}</div>
           </HeaderProvider>
         </div>
       </div>

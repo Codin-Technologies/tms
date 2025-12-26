@@ -6,14 +6,31 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Truck } from "lucide-react";
 import AddTyreForm from "@/components/add-new-tyre-form";
 import { useStockOverviewQuery } from "./query";
-import { useHeader } from '@/components/HeaderContext'
+import { useHeader } from '@/components/HeaderContext';
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function StockPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isLoading, error, data: Overview } = useStockOverviewQuery();
+  const queryClient = useQueryClient();
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
+
+  const handleTyreAdded = async () => {
+    console.log("handleTyreAdded triggered, refreshing data...");
+    // Give backend a moment to process before re-fetching
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Invalidate and refetch all related data
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["stock"] }),
+      queryClient.invalidateQueries({ queryKey: ["stockOverview"] }),
+      queryClient.refetchQueries({ queryKey: ["stock"] }),
+      queryClient.refetchQueries({ queryKey: ["stockOverview"] })
+    ]);
+    console.log("Data refresh requests sent");
+  };
 
   const { setHeader } = useHeader();
 
@@ -41,22 +58,22 @@ export default function StockPage() {
         <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard
             title="Total Tyres"
-            value={Overview ? Overview.data?.total : 0}
+            value={Overview ? Overview.data.total : 0}
             icon={<Truck />}
           />
           <StatCard
             title="In Use"
-            value={Overview ? Overview.data?.inuse : 0}
+            value={Overview ? Overview.data.inuse : 0}
             icon={<Truck />}
           />
           <StatCard
             title="In Store"
-            value={Overview ? Overview.data?.instore : 0}
+            value={Overview ? Overview.data.instore : 0}
             icon={<Truck />}
           />
           <StatCard
             title="Needs Replacement"
-            value={Overview ? Overview.data?.needsreplacement : 0}
+            value={Overview ? Overview.data.needsreplacement : 0}
             icon={<Truck />}
           />
         </div>
@@ -79,7 +96,7 @@ export default function StockPage() {
             </button>
 
             <h2 className="text-xl font-bold mb-4">Add New Tyre</h2>
-            <AddTyreForm onCancel={handleCloseModal} />
+            <AddTyreForm onCancel={handleCloseModal} onSuccess={handleTyreAdded} />
           </div>
         </div>
       )}

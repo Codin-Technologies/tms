@@ -3,8 +3,8 @@
 import React from 'react'
 import { Bell, Plus, CheckCircle, AlertTriangle, ClipboardList, Package, Wrench, Truck, FileText, Users, Settings, HelpCircle, LogOut, MoreVertical } from 'lucide-react'
 import { useHeader } from '@/components/HeaderContext'
-import { useStockOverviewQuery } from '../stock/query'
-import { useInspectionOverviewQuery } from '../inspection/query'
+import { useStockOverviewQuery } from '@/app/(pages)/stock/query'
+import { useInspectionOverviewQuery } from '@/app/(pages)/inspection/query'
 import { formatDistanceToNow } from 'date-fns'
 
 const StatCard = ({ title, value, icon: Icon, trend, iconBg, iconColor, badge }: any) => (
@@ -51,8 +51,10 @@ const Dashboard = () => {
   /* Safe access handling */
   const stockData = stockOverview?.data || { total: 0, inuse: 0, instore: 0, needsreplacement: 0 };
   const inspectionData = inspectionOverview?.data || {
-    totalInspections: { value: 0 },
-    pendingReviews: { value: 0 },
+    totalInspections: { value: 0, monthGrowth: 0 },
+    failedInspections: { value: 0, change: 0, direction: "down" },
+    passRate: { value: 0, change: 0, direction: "down" },
+    pendingReviews: { value: 0, status: "clear" },
   };
 
   return (

@@ -6,6 +6,12 @@ import {
     User,
     CheckCircle,
     BarChart,
+    LayoutDashboard,
+    Database,
+    ClipboardList,
+    ArrowLeftRight,
+    LineChart,
+    Trash2,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -18,13 +24,33 @@ export const sidebarItems: {
 }[] = [
         {
             name: "Dashboard",
-            href: "/",
+            href: "/stock/dashboard",
             icon: Home,
         },
         {
-            name: "Inventory",
-            href: "/stock",
+            name: "SKU Catalog",
+            href: "/stock/skus",
+            icon: Database,
+        },
+        {
+            name: "Inventory by SKU",
+            href: "/stock/inventory",
             icon: Box,
+        },
+        {
+            name: "Transfers",
+            href: "/stock/transfers",
+            icon: ArrowLeftRight,
+        },
+        {
+            name: "Reorder & Forecast",
+            href: "/stock/reorder",
+            icon: LineChart,
+        },
+        {
+            name: "Scrap & Quarantine",
+            href: "/stock/scrap",
+            icon: Trash2,
         },
         {
             name: "Operations",

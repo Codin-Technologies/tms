@@ -3,6 +3,7 @@ import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { addTyreToStock } from "@/actions/stock";
 
 export type AddTyreFormValues = {
   vehicleReg: string;
@@ -19,9 +20,11 @@ export type AddTyreFormValues = {
 export default function AddTyreForm({
   onCancel,
   initialValues,
+  onSuccess,
 }: {
   onCancel: () => void;
   initialValues?: AddTyreFormValues;
+  onSuccess?: () => void;
 }) {
   const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm<AddTyreFormValues>({
     defaultValues: {
@@ -48,18 +51,43 @@ export default function AddTyreForm({
   };
 
   const onSubmit = async (values: AddTyreFormValues) => {
-    console.log("Add tyre payload:", values);
-    await toast.promise(
-      new Promise((resolve) => setTimeout(() => resolve({ message: "Tyre added successfully!" }), 1000)), // replace with API call
-      {
-        loading: "Adding tyre...",
-        success: (data: any) => {
-          handleCancel();
-          return data.message || "Tyre added successfully!";
-        },
-        error: (err: any) => err.message || "Failed to add tyre.",
-      }
-    );
+    console.log("Submitting form with values:", values);
+
+    try {
+      await toast.promise(
+        addTyreToStock({
+          brand: values.tyreBrand,
+          model: values.tyreModel,
+          size: values.tyreSize,
+          serialNumber: values.serialNumber,
+          cost: values.cost,
+          vendor: values.vehicleReg,
+          warehouseId: "Default Warehouse",
+          purchaseDate: values.purchaseDate,
+          tyreType: values.tyreType,
+        }),
+        {
+          loading: "Adding tyre...",
+          success: (result: any) => {
+            console.log("Server action result:", result);
+            if (result.success) {
+              handleCancel();
+              if (onSuccess) onSuccess();
+              return result.message || "Tyre added successfully!";
+            } else {
+              console.error("Server action failed:", result.message);
+              throw new Error(result.message);
+            }
+          },
+          error: (err: any) => {
+            console.error("Form submission error:", err);
+            return err.message || "Failed to add tyre.";
+          },
+        }
+      );
+    } catch (error) {
+      console.error("onSubmit try-catch error:", error);
+    }
   };
 
   return (
@@ -157,7 +185,7 @@ export default function AddTyreForm({
             Cost
           </label>
           <input
-            {...register("cost")}
+            {...register("cost", { valueAsNumber: true })}
             type="number"
             step="0.01"
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004953] border-gray-300"

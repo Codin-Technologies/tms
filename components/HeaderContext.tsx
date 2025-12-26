@@ -4,8 +4,8 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { usePathname } from "next/navigation";
 
 type HeaderState = {
-  title?: string;
-  subtitle?: string;
+  title?: ReactNode;
+  subtitle?: ReactNode;
   searchPlaceholder?: string;
   actions?: ReactNode;
 };

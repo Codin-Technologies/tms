@@ -1,11 +1,5 @@
-import Image from "next/image";
-import TMSLayout from "./(pages)/layout";
-import Dashboard from "./(pages)/dashboard";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <TMSLayout>
-      <Dashboard/>
-    </TMSLayout>
-  );
+  redirect('/stock/dashboard');
 }

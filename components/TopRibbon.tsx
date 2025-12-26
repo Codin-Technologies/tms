@@ -12,8 +12,8 @@ export default function TopRibbon() {
       <div className="px-8 py-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{header.title}</h1>
-            {header.subtitle && <p className="text-sm text-gray-500 mt-1">{header.subtitle}</p>}
+            <div className="text-2xl font-bold text-gray-900 leading-tight">{header.title}</div>
+            {header.subtitle && <div className="text-sm text-gray-500 mt-1">{header.subtitle}</div>}
           </div>
 
           <div className="flex items-center gap-4">
