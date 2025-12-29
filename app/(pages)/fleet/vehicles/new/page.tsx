@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import { useHeader } from '@/components/HeaderContext';
 import { useRouter } from 'next/navigation';
 import { useSKUsQuery } from '@/app/(pages)/stock/skus/query';
@@ -28,6 +28,8 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, Transition } from '@headlessui/react';
+import { VehicleAxleDiagram, VehicleAxleData } from '@/components/fleet/VehicleAxleDiagram';
+import { AxleType } from '@/components/fleet/AxleRow';
 
 // ============================================================================
 // TYPE DEFINITIONS (Strict TypeScript Interfaces)
@@ -111,7 +113,7 @@ export default function AddVehiclePage() {
     const router = useRouter();
     const { setHeader } = useHeader();
     const { data: skus } = useSKUsQuery();
-    
+
     const [currentStep, setCurrentStep] = useState(1);
     const [vehicleData, setVehicleData] = useState<Partial<VehicleConfiguration>>({
         vehicleId: '',
@@ -126,7 +128,7 @@ export default function AddVehiclePage() {
         axles: [],
         positions: [],
     });
-    
+
     const [axles, setAxles] = useState<Axle[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [showAddAxle, setShowAddAxle] = useState(false);
@@ -210,15 +212,15 @@ export default function AddVehiclePage() {
 
     // Step validation functions
     const canProceedToStep2 = () => {
-        return vehicleData.vehicleId && 
-               vehicleData.make && 
-               vehicleData.model;
+        return vehicleData.vehicleId &&
+            vehicleData.make &&
+            vehicleData.model;
     };
 
     const canProceedToStep3 = () => {
-        return axles.length > 0 && 
-               axles.every(axle => axle.tolerance <= (vehicleData.assetTolerance || 0)) &&
-               vehicleData.assetTolerance !== undefined;
+        return axles.length > 0 &&
+            axles.every(axle => axle.tolerance <= (vehicleData.assetTolerance || 0)) &&
+            vehicleData.assetTolerance !== undefined;
     };
 
     const canProceedToStep4 = () => {
@@ -226,10 +228,10 @@ export default function AddVehiclePage() {
     };
 
     const canActivate = () => {
-        return canProceedToStep4() && 
-               axles.length > 0 &&
-               positions.every(pos => pos.skuRules.length >= 0) && // Rules are optional (OR logic)
-               axles.every(axle => axle.tolerance <= (vehicleData.assetTolerance || 0));
+        return canProceedToStep4() &&
+            axles.length > 0 &&
+            positions.every(pos => pos.skuRules.length >= 0) && // Rules are optional (OR logic)
+            axles.every(axle => axle.tolerance <= (vehicleData.assetTolerance || 0));
     };
 
     // Handlers
@@ -265,16 +267,16 @@ export default function AddVehiclePage() {
     };
 
     const handleAddSKURule = (positionId: string, rule: SKURule) => {
-        setPositions(positions.map(pos => 
-            pos.id === positionId 
+        setPositions(positions.map(pos =>
+            pos.id === positionId
                 ? { ...pos, skuRules: [...pos.skuRules, rule] }
                 : pos
         ));
     };
 
     const handleRemoveSKURule = (positionId: string, ruleId: string) => {
-        setPositions(positions.map(pos => 
-            pos.id === positionId 
+        setPositions(positions.map(pos =>
+            pos.id === positionId
                 ? { ...pos, skuRules: pos.skuRules.filter(r => r.id !== ruleId) }
                 : pos
         ));
@@ -353,7 +355,7 @@ export default function AddVehiclePage() {
                         onAddRule={handleAddSKURule}
                         onRemoveRule={handleRemoveSKURule}
                         onUpdatePosition={(id, updates) => {
-                            setPositions(positions.map(pos => 
+                            setPositions(positions.map(pos =>
                                 pos.id === id ? { ...pos, ...updates } : pos
                             ));
                         }}
@@ -455,19 +457,17 @@ function StepperNavigation({
                             <button
                                 onClick={() => isAccessible && onStepClick(step.number)}
                                 disabled={!isAccessible}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                                    isActive
-                                        ? 'bg-teal-600 text-white shadow-lg'
-                                        : isComplete
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
+                                    ? 'bg-teal-600 text-white shadow-lg'
+                                    : isComplete
                                         ? 'bg-teal-50 text-teal-700 hover:bg-teal-100'
                                         : isAccessible
-                                        ? 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                                        : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                                }`}
+                                            ? 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                                    }`}
                             >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                    isActive ? 'bg-white/20' : isComplete ? 'bg-teal-600 text-white' : 'bg-gray-200'
-                                }`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/20' : isComplete ? 'bg-teal-600 text-white' : 'bg-gray-200'
+                                    }`}>
                                     {isComplete ? (
                                         <CheckCircle2 className="w-5 h-5" />
                                     ) : (
@@ -480,9 +480,8 @@ function StepperNavigation({
                                 </div>
                             </button>
                             {index < steps.length - 1 && (
-                                <ChevronRight className={`w-5 h-5 ${
-                                    isComplete ? 'text-teal-600' : 'text-gray-300'
-                                }`} />
+                                <ChevronRight className={`w-5 h-5 ${isComplete ? 'text-teal-600' : 'text-gray-300'
+                                    }`} />
                             )}
                         </React.Fragment>
                     );
@@ -532,104 +531,104 @@ function Step1VehicleDetails({
             e.preventDefault();
             methods.handleSubmit(onSubmit)(e);
         }} className="space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-teal-600 text-white flex items-center justify-center">
-                        <Truck className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Vehicle Details</h2>
-                        <p className="text-sm text-gray-500">Create the asset identity before structure</p>
-                    </div>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-teal-600 text-white flex items-center justify-center">
+                    <Truck className="w-5 h-5" />
                 </div>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Vehicle Details</h2>
+                    <p className="text-sm text-gray-500">Create the asset identity before structure</p>
+                </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Vehicle ID / Fleet Number <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            {...methods.register('vehicleId')}
-                            placeholder="e.g. FL-7823"
-                        />
-                        {methods.formState.errors.vehicleId && (
-                            <p className="text-xs text-red-600">{methods.formState.errors.vehicleId.message}</p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Registration Number</label>
-                        <Input
-                            {...methods.register('registrationNumber')}
-                            placeholder="e.g. ABC-123"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Vehicle Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            {...methods.register('vehicleType')}
-                            className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
-                        >
-                            <option value="Truck">Truck</option>
-                            <option value="Trailer">Trailer</option>
-                            <option value="Bus">Bus</option>
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Status</label>
-                        <select
-                            {...methods.register('status')}
-                            className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
-                        >
-                            <option value="Draft">Draft</option>
-                            <option value="Active">Active</option>
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Make <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            {...methods.register('make')}
-                            placeholder="e.g. Freightliner"
-                        />
-                        {methods.formState.errors.make && (
-                            <p className="text-xs text-red-600">{methods.formState.errors.make.message}</p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Model <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            {...methods.register('model')}
-                            placeholder="e.g. Cascadia"
-                        />
-                        {methods.formState.errors.model && (
-                            <p className="text-xs text-red-600">{methods.formState.errors.model.message}</p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Year</label>
-                        <Input
-                            type="number"
-                            {...methods.register('year', { valueAsNumber: true })}
-                            min="1900"
-                            max={new Date().getFullYear() + 1}
-                        />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Vehicle ID / Fleet Number <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                        {...methods.register('vehicleId')}
+                        placeholder="e.g. FL-7823"
+                    />
+                    {methods.formState.errors.vehicleId && (
+                        <p className="text-xs text-red-600">{methods.formState.errors.vehicleId.message}</p>
+                    )}
                 </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Registration Number</label>
+                    <Input
+                        {...methods.register('registrationNumber')}
+                        placeholder="e.g. ABC-123"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Vehicle Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        {...methods.register('vehicleType')}
+                        className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                    >
+                        <option value="Truck">Truck</option>
+                        <option value="Trailer">Trailer</option>
+                        <option value="Bus">Bus</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Status</label>
+                    <select
+                        {...methods.register('status')}
+                        className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                    >
+                        <option value="Draft">Draft</option>
+                        <option value="Active">Active</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Make <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                        {...methods.register('make')}
+                        placeholder="e.g. Freightliner"
+                    />
+                    {methods.formState.errors.make && (
+                        <p className="text-xs text-red-600">{methods.formState.errors.make.message}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Model <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                        {...methods.register('model')}
+                        placeholder="e.g. Cascadia"
+                    />
+                    {methods.formState.errors.model && (
+                        <p className="text-xs text-red-600">{methods.formState.errors.model.message}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Year</label>
+                    <Input
+                        type="number"
+                        {...methods.register('year', { valueAsNumber: true })}
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
+                    />
+                </div>
+            </div>
 
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                        <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-blue-800">
-                            <p className="font-medium mb-1">Vehicle Type Controls Default Axle Templates</p>
-                            <p className="text-xs">The selected vehicle type will suggest appropriate axle configurations in the next step.</p>
-                        </div>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Vehicle Type Controls Default Axle Templates</p>
+                        <p className="text-xs">The selected vehicle type will suggest appropriate axle configurations in the next step.</p>
                     </div>
                 </div>
-            </form>
+            </div>
+        </form>
     );
 }
 
@@ -683,9 +682,9 @@ function Step2AxleConfiguration({
                         <label className="text-sm font-medium text-gray-700">Tolerance Basis</label>
                         <select
                             value={vehicleData.toleranceBasis || 'None'}
-                            onChange={(e) => onUpdateVehicleData({ 
-                                ...vehicleData, 
-                                toleranceBasis: e.target.value as ToleranceBasis 
+                            onChange={(e) => onUpdateVehicleData({
+                                ...vehicleData,
+                                toleranceBasis: e.target.value as ToleranceBasis
                             })}
                             className="w-full h-11 px-4 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
                         >
@@ -700,9 +699,9 @@ function Step2AxleConfiguration({
                         <Input
                             type="number"
                             value={vehicleData.assetTolerance || 0}
-                            onChange={(e) => onUpdateVehicleData({ 
-                                ...vehicleData, 
-                                assetTolerance: parseFloat(e.target.value) || 0 
+                            onChange={(e) => onUpdateVehicleData({
+                                ...vehicleData,
+                                assetTolerance: parseFloat(e.target.value) || 0
                             })}
                             placeholder="Max variance across vehicle"
                             min="0"
@@ -855,7 +854,7 @@ function AxleFormDialog({
         e.preventDefault();
         const validation = axleSchema.safeParse(formData);
         if (!validation.success) {
-            alert(validation.error.errors[0].message);
+            alert(validation.error.issues[0].message);
             return;
         }
         if (formData.tolerance > assetTolerance) {
@@ -1056,11 +1055,11 @@ function Step3PositionRules({
                                                                 <React.Fragment key={rule.id}>
                                                                     {idx > 0 && <span className="text-xs text-gray-400">OR</span>}
                                                                     <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-                                                                        {rule.type === 'specific' 
+                                                                        {rule.type === 'specific'
                                                                             ? `SKU: ${skus.find(s => s.id === rule.skuId)?.skuCode || 'N/A'}`
                                                                             : rule.type === 'category'
-                                                                            ? `Category: ${rule.category}`
-                                                                            : `Commodity: ${rule.commodityCode}`
+                                                                                ? `Category: ${rule.category}`
+                                                                                : `Commodity: ${rule.commodityCode}`
                                                                         }
                                                                     </Badge>
                                                                 </React.Fragment>
@@ -1280,6 +1279,16 @@ function Step4ReviewActivate({
         return sku ? `${sku.brand} ${sku.model} (${sku.skuCode})` : 'Unknown';
     };
 
+    const diagramData = useMemo<VehicleAxleData>(() => ({
+        vehicleId: vehicleData.vehicleId || 'N/A',
+        vehicleType: (vehicleData.vehicleType || 'Truck').toUpperCase(),
+        axles: axles.map(axle => ({
+            axleNumber: axle.number,
+            axleType: (axle.liftAxle ? 'LIFT' : axle.position.toUpperCase()) as AxleType,
+            tiresPerSide: axle.tireConfig === 'Single' ? 1 : 2
+        }))
+    }), [vehicleData, axles]);
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
@@ -1294,80 +1303,57 @@ function Step4ReviewActivate({
 
             {/* Vehicle Summary */}
             <Card className="p-6 border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Vehicle Summary</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 font-black uppercase tracking-tight text-sm">Vehicle Summary</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                        <p className="text-gray-500">ID</p>
-                        <p className="font-medium">{vehicleData.vehicleId}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Vehicle ID</p>
+                        <p className="font-bold text-gray-800">{vehicleData.vehicleId}</p>
                     </div>
                     <div>
-                        <p className="text-gray-500">Type</p>
-                        <p className="font-medium">{vehicleData.vehicleType}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Type</p>
+                        <p className="font-bold text-gray-800">{vehicleData.vehicleType}</p>
                     </div>
                     <div>
-                        <p className="text-gray-500">Make/Model</p>
-                        <p className="font-medium">{vehicleData.make} {vehicleData.model}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Make/Model</p>
+                        <p className="font-bold text-gray-800">{vehicleData.make} {vehicleData.model}</p>
                     </div>
                     <div>
-                        <p className="text-gray-500">Status</p>
-                        <Badge variant="outline">{vehicleData.status}</Badge>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                        <Badge variant="outline" className="font-bold uppercase text-[9px] bg-gray-50">{vehicleData.status}</Badge>
                     </div>
                 </div>
             </Card>
 
             {/* Tolerances Summary */}
             <Card className="p-6 border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Tolerances</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 font-black uppercase tracking-tight text-sm">Asset & Axle Tolerances</h3>
                 <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                        <span className="text-sm font-medium">Asset Tolerance</span>
-                        <span className="font-semibold">{vehicleData.assetTolerance}</span>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">Asset Tolerance Basis: {vehicleData.toleranceBasis}</span>
+                        <span className="font-black text-teal-700 text-sm">{vehicleData.assetTolerance}</span>
                     </div>
-                    {axles.map(axle => (
-                        <div key={axle.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                            <span className="text-sm">Axle {axle.number} ({axle.position})</span>
-                            <span className="font-medium">{axle.tolerance}</span>
-                        </div>
-                    ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {axles.map(axle => (
+                            <div key={axle.id} className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Axle {axle.number} ({axle.position})</span>
+                                <span className="font-bold text-gray-800 text-xs">{axle.tolerance}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </Card>
 
-            {/* Visual Axle Diagram */}
-            <Card className="p-6 border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Axle Configuration Diagram</h3>
-                <div className="flex items-center justify-center gap-4 p-6 bg-gray-50 rounded-lg">
-                    {axles.map((axle, index) => (
-                        <React.Fragment key={axle.id}>
-                            <div className="flex flex-col items-center">
-                                <div className="text-xs font-medium text-gray-600 mb-2">A{axle.number}</div>
-                                <div className="flex gap-1">
-                                    {axle.tireConfig === 'Single' ? (
-                                        <>
-                                            <Circle className="w-8 h-8 text-gray-400" />
-                                            <Circle className="w-8 h-8 text-gray-400" />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="flex flex-col gap-0.5">
-                                                <Circle className="w-6 h-6 text-gray-400" />
-                                                <Circle className="w-6 h-6 text-gray-400" />
-                                            </div>
-                                            <div className="flex flex-col gap-0.5">
-                                                <Circle className="w-6 h-6 text-gray-400" />
-                                                <Circle className="w-6 h-6 text-gray-400" />
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">{axle.position}</div>
-                            </div>
-                            {index < axles.length - 1 && (
-                                <div className="w-8 h-0.5 bg-gray-300"></div>
-                            )}
-                        </React.Fragment>
-                    ))}
+            {/* Visual Axle Diagram (Integrated) */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-black text-gray-900 uppercase tracking-tight text-sm">Axle Configuration Preview</h3>
+                    <Badge variant="outline" className="text-[9px] bg-teal-50 text-teal-700 border-none font-black uppercase tracking-tighter">Live</Badge>
                 </div>
-            </Card>
+                <VehicleAxleDiagram
+                    data={diagramData}
+                    className="!bg-gray-50/50 !shadow-none !border-gray-200 !rounded-2xl"
+                />
+            </div>
 
             {/* Axles & Positions Summary */}
             <Card className="p-6 border-gray-200">
@@ -1390,11 +1376,11 @@ function Step4ReviewActivate({
                                                         <React.Fragment key={rule.id}>
                                                             {idx > 0 && <span className="text-xs text-gray-400 mr-1">OR</span>}
                                                             <Badge variant="outline" className="mr-1">
-                                                                {rule.type === 'specific' 
+                                                                {rule.type === 'specific'
                                                                     ? getSKUName(rule.skuId!)
                                                                     : rule.type === 'category'
-                                                                    ? `Category: ${rule.category}`
-                                                                    : `Commodity: ${rule.commodityCode}`
+                                                                        ? `Category: ${rule.category}`
+                                                                        : `Commodity: ${rule.commodityCode}`
                                                                 }
                                                             </Badge>
                                                         </React.Fragment>

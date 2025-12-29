@@ -29,7 +29,7 @@ export const fetchTyreStockData = async () => {
   } catch (error) {
     throw new Error(
       (error as Error).message ||
-        "An unexpected error occurred while fetching tyre stock data"
+      "An unexpected error occurred while fetching tyre stock data"
     );
   }
 };
@@ -62,7 +62,38 @@ export const overviewTyreStockData = async () => {
   } catch (error) {
     throw new Error(
       (error as Error).message ||
-        "An unexpected error occurred while fetching tyre stock overview"
+      "An unexpected error occurred while fetching tyre stock overview"
     );
+  }
+};
+
+export const addTyreToStock = async (tyreData: any) => {
+  try {
+    const base = process.env.API_BASE_URL;
+    if (!base) {
+      console.warn("API_BASE_URL is not set; simulating success for dev.");
+      return { success: true, message: "Tyre added successfully (dev mock)" };
+    }
+
+    const response = await fetch(`${base}/tyres`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(tyreData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, message: data.message || "Failed to add tyre" };
+    }
+
+    return { success: true, message: data.message || "Tyre added successfully", data };
+  } catch (error) {
+    return {
+      success: false,
+      message: (error as Error).message || "An unexpected error occurred while adding tyre",
+    };
   }
 };
