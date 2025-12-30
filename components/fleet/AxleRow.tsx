@@ -20,6 +20,8 @@ interface AxleRowProps {
     tireSpacing: number;
     axleWidth: number;
     tireStatuses?: Record<string, TireStatus>;
+    pendingAssignments?: Record<string, string>;
+    selectedPositionId?: string | null;
     onTireClick?: (position: TirePosition & { status: TireStatus }) => void;
     onTireMouseEnter?: (position: TirePosition & { status: TireStatus }, event: React.MouseEvent) => void;
     onTireMouseLeave?: () => void;
@@ -34,6 +36,8 @@ export const AxleRow: React.FC<AxleRowProps> = ({
     tireSpacing,
     axleWidth,
     tireStatuses = {},
+    pendingAssignments = {},
+    selectedPositionId = null,
     onTireClick,
     onTireMouseEnter,
     onTireMouseLeave,
@@ -48,12 +52,16 @@ export const AxleRow: React.FC<AxleRowProps> = ({
             const xOffset = (axleWidth / 2 + i * (tireWidth + tireSpacing)) * sideMultiplier;
             const positionId = `A${axle.axleNumber}-${side}${i + 1}`;
             const status = tireStatuses[positionId] || 'EMPTY';
+            const isPending = !!pendingAssignments[positionId];
+            const isSelected = selectedPositionId === positionId;
 
             tires.push(
                 <TireNode
                     key={positionId}
                     position={{ positionId, side, index: i }}
                     status={status}
+                    isPending={isPending}
+                    isSelected={isSelected}
                     x={centerX + xOffset}
                     y={y}
                     width={tireWidth}

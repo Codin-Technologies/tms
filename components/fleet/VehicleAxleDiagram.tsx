@@ -16,6 +16,8 @@ interface VehicleAxleDiagramProps {
     isLoading?: boolean;
     onTireClick?: (position: TirePosition & { status: TireStatus }) => void;
     tireStatuses?: Record<string, TireStatus>;
+    pendingAssignments?: Record<string, string>;
+    selectedPositionId?: string | null;
     className?: string;
 }
 
@@ -24,6 +26,8 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
     isLoading = false,
     onTireClick,
     tireStatuses = {},
+    pendingAssignments = {},
+    selectedPositionId = null,
     className = '',
 }) => {
     const [hoveredTire, setHoveredTire] = useState<{ position: TirePosition & { status: TireStatus }, x: number, y: number } | null>(null);
@@ -140,6 +144,8 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
                         tireSpacing={tireSpacing}
                         axleWidth={axleWidth}
                         tireStatuses={tireStatuses}
+                        pendingAssignments={pendingAssignments}
+                        selectedPositionId={selectedPositionId}
                         onTireClick={(tire) => {
                             setSelectedTire(tire);
                             onTireClick?.(tire);

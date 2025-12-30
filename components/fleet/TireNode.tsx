@@ -17,6 +17,8 @@ interface TireNodeProps {
     y: number;
     width: number;
     height: number;
+    isPending?: boolean;
+    isSelected?: boolean;
     onClick?: (position: TirePosition & { status: TireStatus }) => void;
     onMouseEnter?: (position: TirePosition & { status: TireStatus }, event: React.MouseEvent) => void;
     onMouseLeave?: () => void;
@@ -29,6 +31,8 @@ export const TireNode: React.FC<TireNodeProps> = ({
     y,
     width,
     height,
+    isPending = false,
+    isSelected = false,
     onClick,
     onMouseEnter,
     onMouseLeave,
@@ -47,11 +51,11 @@ export const TireNode: React.FC<TireNodeProps> = ({
         }
     };
 
-    const statusColor = getStatusColor(status);
+    const statusColor = isPending ? '#3b82f6' : getStatusColor(status); // blue-500 for pending
 
     return (
         <g
-            className="tire-node group cursor-pointer"
+            className={`tire-node group cursor-pointer ${isPending ? 'animate-pulse' : ''}`}
             onClick={() => onClick?.({ ...position, status })}
             onMouseEnter={(e) => onMouseEnter?.({ ...position, status }, e)}
             onMouseLeave={() => onMouseLeave?.()}
@@ -64,13 +68,13 @@ export const TireNode: React.FC<TireNodeProps> = ({
                 height={height}
                 rx={4}
                 fill={statusColor}
-                stroke={status === 'EMPTY' ? '#d1d5db' : 'none'}
-                strokeWidth={1}
-                className="transition-colors duration-200 group-hover:brightness-95"
+                stroke={isSelected ? '#0d9488' : (status === 'EMPTY' ? '#d1d5db' : 'none')} // teal-600 if selected
+                strokeWidth={isSelected ? 3 : 1}
+                className="transition-all duration-200 group-hover:brightness-95"
             />
 
             {/* Position Label (Hidden by default, shown on hover if needed or just for dev) */}
-            <title>{`${position.positionId} (${status})`}</title>
+            <title>{`${position.positionId} (${status})${isPending ? ' - PENDING' : ''}`}</title>
         </g>
     );
 };

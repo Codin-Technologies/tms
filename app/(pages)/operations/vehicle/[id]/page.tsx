@@ -38,6 +38,14 @@ import {
     Package,
     ShieldCheck,
     Circle,
+    RefreshCcw,
+    ArrowRightLeft,
+    ArrowRight,
+    RotateCcw,
+    ListFilter,
+    Save,
+    Download,
+    TrendingUp,
 } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +101,14 @@ export interface SKURule {
     commodityCode?: string;
 }
 
+export interface RotationRule {
+    id: string;
+    name: string;
+    description: string;
+    pattern: Record<string, string>; // e.g. "A1-L" -> "A2-R"
+    axleCount: number;
+}
+
 export interface VehicleConfiguration {
     vehicleId: string;
     registrationNumber: string;
@@ -135,7 +151,7 @@ const mockVehicleData: Record<string, any> = {
         fleetNumber: 'FL-7823',
         registrationNumber: 'ABC-123',
         vehicleType: 'Truck',
-        name: 'AB103',
+        name: 'ABC-123',
         description: 'Bobcat - 2011 New Holland L230 - JAF0L2305BM18CMLY',
         make: 'Freightliner',
         model: 'Cascadia',
@@ -233,7 +249,7 @@ function AxleConfigurationSection({
                 </div>
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Axle Configuration</h2>
-                    <p className="text-sm text-gray-500">Define physical reality of the vehicle (IBM MFT Model)</p>
+                    <p className="text-sm text-gray-500">Define physical reality of the vehicle (Model)</p>
                 </div>
             </div>
 
@@ -241,7 +257,7 @@ function AxleConfigurationSection({
             <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Gauge className="w-5 h-5 text-teal-600" />
-                    Asset-Level Tolerances (IBM Exact Match)
+                    Asset-Level Tolerances (Exact Match)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -823,7 +839,7 @@ export default function VehicleDetailPage() {
         fleetNumber: vehicleId,
         registrationNumber: 'N/A',
         vehicleType: 'N/A',
-        name: vehicleId,
+        name: 'N/A',
         description: 'Vehicle Description',
         make: 'N/A',
         model: 'Unknown Vehicle',
@@ -837,7 +853,20 @@ export default function VehicleDetailPage() {
         odometer: '85 hr',
     }, [vehicleId]);
 
-    const [vehicle, setVehicle] = useState(initialVehicleData);
+    // Ensure name defaults to registrationNumber if available
+    const processedInitialData = useMemo(() => {
+        const raw = mockVehicleData[vehicleId] || initialVehicleData;
+        return {
+            ...raw,
+            name: raw.name === 'N/A' || !raw.name ? (raw.registrationNumber !== 'N/A' ? raw.registrationNumber : raw.id) : raw.name
+        };
+    }, [vehicleId, initialVehicleData]);
+
+    const [vehicle, setVehicle] = useState(processedInitialData);
+
+    useEffect(() => {
+        setVehicle(processedInitialData);
+    }, [processedInitialData]);
     const { data: skus } = useSKUsQuery();
 
     // Configuration State
@@ -858,6 +887,85 @@ export default function VehicleDetailPage() {
     const [positions, setPositions] = useState<Position[]>([]);
     const [showAddAxle, setShowAddAxle] = useState(false);
     const [editingAxle, setEditingAxle] = useState<Axle | null>(null);
+
+    // Issuing State
+    const [isIssuingMode, setIsIssuingMode] = useState(false);
+    const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
+    const [pendingIssuance, setPendingIssuance] = useState<Record<string, string>>({}); // positionId -> skuId/serial
+    const [pendingDispositions, setPendingDispositions] = useState<Record<string, 'Scrap' | 'Quarantine' | 'Inventory'>>({}); // positionId -> disposition
+    const [selectedDiagramPosition, setSelectedDiagramPosition] = useState<string | null>(null);
+
+    // Rotation State
+    const [isRotationMode, setIsRotationMode] = useState(false);
+    const [selectedSourcePosition, setSelectedSourcePosition] = useState<string | null>(null);
+    const [pendingRotations, setPendingRotations] = useState<Record<string, string>>({}); // targetPositionId -> sourcePositionId
+    const [activityLogs, setActivityLogs] = useState<any[]>([
+        {
+            id: 'log-1',
+            type: 'rotation',
+            sourcePositionId: 'A1-L1',
+            targetPositionId: 'A2-L1',
+            timestamp: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+            performedBy: 'John Doe',
+            status: 'Confirmed'
+        },
+        {
+            id: 'log-3',
+            type: 'install',
+            positionId: 'A1-L1',
+            tireName: 'Michelin X Multi',
+            sku: 'MICH-XM-11R22.5',
+            timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
+            performedBy: 'Sarah Tech',
+            status: 'Confirmed'
+        },
+        {
+            id: 'log-4',
+            type: 'remove',
+            positionId: 'A1-L1',
+            disposition: 'Scrap',
+            reason: 'Sidewall Damage',
+            timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
+            performedBy: 'Sarah Tech',
+            status: 'Confirmed'
+        },
+        {
+            id: 'log-2',
+            type: 'rotation',
+            sourcePositionId: 'A1-R1',
+            targetPositionId: 'A2-R1',
+            timestamp: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
+            performedBy: 'Mike Smith',
+            status: 'Confirmed'
+        }
+    ]);
+    const [rotationRules, setRotationRules] = useState<RotationRule[]>([
+        {
+            id: 'rule-1',
+            name: 'Standard X-Rotation',
+            description: 'Cross rotate steer to drive and rear to front.',
+            axleCount: 2,
+            pattern: {
+                'A1-L1': 'A2-R1',
+                'A1-R1': 'A2-L1',
+                'A2-L1': 'A1-R1',
+                'A2-R1': 'A1-L1'
+            }
+        },
+        {
+            id: 'rule-2',
+            name: 'Front-Back Direct',
+            description: 'Direct swap between front and back axles.',
+            axleCount: 2,
+            pattern: {
+                'A1-L1': 'A2-L1',
+                'A1-R1': 'A2-R1',
+                'A2-L1': 'A1-L1',
+                'A2-R1': 'A1-R1'
+            }
+        }
+    ]);
+    const [showRuleBuilder, setShowRuleBuilder] = useState(false);
 
     // Auto-generate positions when axles change
     useEffect(() => {
@@ -939,6 +1047,172 @@ export default function VehicleDetailPage() {
         ));
     };
 
+    const handleIssueTire = () => {
+        setIsIssuingMode(true);
+        setSelectedInventoryItemId(null);
+        setPendingIssuance({});
+        setSelectedDiagramPosition(null);
+    };
+
+    const handleCancelIssuing = () => {
+        setIsIssuingMode(false);
+        setSelectedInventoryItemId(null);
+        setPendingIssuance({});
+        setSelectedDiagramPosition(null);
+        toast.info('Tire issuing cancelled');
+    };
+
+    const handleConfirmIssuance = () => {
+        const newStatuses = { ...vehicle.tireStatuses };
+        const newLogs: any[] = [];
+
+        Object.entries(pendingIssuance).forEach(([posId, skuId]) => {
+            // Check if there was a removal
+            if (vehicle.tireStatuses?.[posId] && vehicle.tireStatuses[posId] !== 'EMPTY') {
+                const disposition = pendingDispositions[posId];
+                if (!disposition) {
+                    toast.error(`Missing disposition for tire at ${posId}`);
+                    return; // Should be blocked by UI, but safe guard
+                }
+                newLogs.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'remove',
+                    positionId: posId,
+                    disposition: disposition,
+                    reason: 'Replacement',
+                    timestamp: new Date().toISOString(),
+                    performedBy: 'Current User',
+                    status: 'Confirmed'
+                });
+            }
+
+            // Install Log
+            newLogs.push({
+                id: Math.random().toString(36).substr(2, 9),
+                type: 'install',
+                positionId: posId,
+                sku: skus?.find((s: any) => s.id.toString() === skuId)?.skuCode || 'Unknown SKU',
+                tireName: skus?.find((s: any) => s.id.toString() === skuId)?.brand || 'New Tire',
+                timestamp: new Date().toISOString(),
+                performedBy: 'Current User',
+                status: 'Confirmed'
+            });
+
+            newStatuses[posId] = 'ASSIGNED';
+        });
+
+        setVehicle((prev: any) => ({ ...prev, tireStatuses: newStatuses }));
+        setActivityLogs(prev => [...newLogs, ...prev]);
+        setIsIssuingMode(false);
+        setPendingIssuance({});
+        setPendingDispositions({});
+        setSelectedInventoryItemId(null);
+        setSelectedDiagramPosition(null);
+        toast.success(`Processed ${Object.keys(pendingIssuance).length} tire updates`);
+    };
+
+    const handleRotateTires = () => {
+        setIsRotationMode(true);
+        setIsIssuingMode(false);
+        setSelectedSourcePosition(null);
+        setPendingRotations({});
+    };
+
+    const handleCancelRotation = () => {
+        setIsRotationMode(false);
+        setSelectedSourcePosition(null);
+        setPendingRotations({});
+        toast.info('Tire rotation cancelled');
+    };
+
+    const handleConfirmRotation = () => {
+        const newStatuses = { ...vehicle.tireStatuses };
+        const newLogs: any[] = [];
+
+        // Apply rotations: target position gets the status of the source position
+        Object.entries(pendingRotations).forEach(([target, source]) => {
+            const sourceStatus = vehicle.tireStatuses?.[source] || 'EMPTY';
+            const targetStatus = vehicle.tireStatuses?.[target] || 'EMPTY';
+
+            newLogs.push({
+                id: Math.random().toString(36).substr(2, 9),
+                type: 'rotation',
+                sourcePositionId: source,
+                targetPositionId: target,
+                performedBy: "Current User",
+                timestamp: new Date().toISOString(),
+                status: 'Confirmed'
+            });
+
+            newStatuses[target] = sourceStatus;
+            if (!pendingRotations[source]) {
+                newStatuses[source] = 'EMPTY';
+            }
+        });
+
+        setVehicle((prev: any) => ({ ...prev, tireStatuses: newStatuses }));
+        setActivityLogs(prev => [...newLogs, ...prev]);
+        setIsRotationMode(false);
+        setPendingRotations({});
+        setSelectedSourcePosition(null);
+        toast.success('Tire rotation confirmed');
+    };
+
+    const handleRevertRotation = (logId: string) => {
+        const log = activityLogs.find(l => l.id === logId);
+        if (!log || log.type !== 'rotation') return;
+
+        setVehicle((prev: any) => {
+            const nextStatuses = { ...prev.tireStatuses };
+            const currentSource = nextStatuses[log.sourcePositionId];
+            const currentTarget = nextStatuses[log.targetPositionId];
+
+            nextStatuses[log.sourcePositionId] = currentTarget;
+            nextStatuses[log.targetPositionId] = currentSource;
+
+            return { ...prev, tireStatuses: nextStatuses };
+        });
+
+        setActivityLogs(prev => prev.filter(l => l.id !== logId));
+        toast.success(`Rotation reverted: ${log.sourcePositionId} ↔ ${log.targetPositionId}`);
+    };
+
+    const handleAddRule = (rule: Omit<RotationRule, 'id'>) => {
+        const newRule: RotationRule = {
+            id: `rule-${Date.now()}`,
+            ...rule
+        };
+        setRotationRules(prev => [...prev, newRule]);
+        setShowRuleBuilder(false);
+        toast.success(`Rotation rule "${rule.name}" created`);
+    };
+
+    const handleApplyRule = (rule: RotationRule) => {
+        // Map target relative positions to actual position IDs
+        // Pattern: { "A1-L1": "A2-R1" } means the current tire at A1-L1 should move to A2-R1
+        const stagedMoves: Record<string, string> = {};
+
+        Object.entries(rule.pattern).forEach(([sourceRel, targetRel]) => {
+            // Find actual position ID based on positionNumber (e.g., A1-L1)
+            const sourcePos = positions.find(p => p.positionNumber === sourceRel);
+            const targetPos = positions.find(p => p.positionNumber === targetRel);
+
+            if (sourcePos && targetPos) {
+                stagedMoves[targetPos.id] = sourcePos.id;
+            }
+        });
+
+        if (Object.keys(stagedMoves).length === 0) {
+            toast.error("Could not apply rule: No matching positions found for this vehicle configuration.");
+            return;
+        }
+
+        setPendingRotations(stagedMoves);
+        setIsRotationMode(true);
+        setIsIssuingMode(false);
+        toast.info(`Applied rule: ${rule.name}. Review moves in the summary.`);
+    };
+
     const { register, handleSubmit, reset, formState: { errors } } = useForm<VehicleDetailsFormValues>({
         resolver: zodResolver(vehicleDetailsSchema),
         defaultValues: {
@@ -967,79 +1241,61 @@ export default function VehicleDetailPage() {
     useEffect(() => {
         setHeader({
             title: (
-                <div className="flex items-center gap-3">
-                    {vehicle.name}
-                    <Badge className="bg-green-50 text-green-700 border-green-200 shadow-sm animate-in fade-in zoom-in duration-300">
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> {vehicle.status}
-                    </Badge>
-                </div>
-            ),
-            subtitle: (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-medium">
-                    <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-0.5 rounded-md border text-gray-700 font-bold">ID: {vehicle.id}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1.5">Model: <span className="font-bold text-gray-700">{vehicle.model}</span></span>
-                    <span>•</span>
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize font-bold border-teal-200 text-teal-700 bg-teal-50/30">{vehicle.location}</Badge>
-                        <Badge variant="outline" className="font-bold border-blue-200 text-blue-700 bg-blue-50/30">{vehicle.assignment}</Badge>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xl font-black text-gray-900 tracking-tight">Vehicle #{vehicle.fleetNumber || vehicle.id}</span>
+                        <Badge variant="outline" className="text-xs font-bold border-green-200 text-green-700 bg-green-50 uppercase tracking-wider px-2 py-0.5">Active</Badge>
                     </div>
+                    <span className="text-xs font-medium text-gray-500">{vehicle.make} {vehicle.model} {vehicle.year} | VIN: {vehicle.registrationNumber || 'N/A'}</span>
                 </div>
             ),
             actions: (
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="font-bold shadow-sm">
-                        <EyeOff className="w-3.5 h-3.5 mr-2" /> Unwatch
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" size="sm" className="font-bold shadow-sm h-9 bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
+                        <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
-                    <Button variant="outline" size="sm" className="font-bold shadow-sm">
-                        <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                    <Button size="sm" className="font-bold shadow-sm h-9 bg-blue-700 hover:bg-blue-800 text-white">
+                        <Edit className="w-4 h-4 mr-2" /> Edit Vehicle
                     </Button>
-
-                    <Menu as="div" className="relative inline-block text-left">
-                        <Menu.Button className="inline-flex justify-center items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all font-bold text-sm shadow-sm gap-2">
-                            Add <ChevronDown className="w-4 h-4" />
-                        </Menu.Button>
-                        <Transition
-                            as={React.Fragment}
-                            enter="transition ease-out duration-100"
-                            enterFrom="transform opacity-0 scale-95"
-                            enterTo="transform opacity-100 scale-100"
-                            leave="transition ease-in duration-75"
-                            leaveFrom="transform opacity-100 scale-100"
-                            leaveTo="transform opacity-0 scale-95"
-                        >
-                            <Menu.Items className="absolute right-0 mt-2 w-64 origin-top-right bg-white divide-y divide-gray-100 rounded-xl shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                                <div className="px-1 py-1">
-                                    {addMenuItems.map((item, index) => (
-                                        <Menu.Item key={index}>
-                                            {({ active }) => (
-                                                <button
-                                                    className={`${active ? 'bg-teal-50 text-teal-700' : 'text-gray-700'
-                                                        } group flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors`}
-                                                >
-                                                    <item.icon className={`mr-3 h-4 w-4 ${active ? 'text-teal-600' : 'text-gray-400'}`} aria-hidden="true" />
-                                                    {item.label}
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-                            </Menu.Items>
-                        </Transition>
-                    </Menu>
                 </div>
             )
         });
         return () => setHeader({});
     }, [setHeader, vehicle]);
 
-    const kpis = [
-        { label: 'Odometer', value: vehicle.odometer, icon: Gauge, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-        { label: 'Utilization', value: '85%', icon: Activity, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
-        { label: 'Location', value: vehicle.location, icon: MapPin, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-        { label: 'Open Issues', value: '0', icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-100' },
-        { label: 'Status', value: vehicle.status, icon: Clock, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
+    // Metrics Data
+    const metrics = [
+        {
+            label: 'Total Mileage',
+            value: `${parseInt(vehicle.odometer || '0').toLocaleString()} mi`,
+            trend: '+2,847 mi',
+            trendLabel: 'this month',
+            trendColor: 'text-green-600',
+            icon: Gauge,
+            iconColor: 'text-blue-600',
+            iconBg: 'bg-blue-100',
+        },
+        {
+            label: 'Fuel Efficiency',
+            value: '6.8 MPG',
+            trend: '↑ 0.3 MPG',
+            trendLabel: 'vs last month',
+            trendColor: 'text-green-600',
+            icon: Fuel,
+            iconColor: 'text-green-600',
+            iconBg: 'bg-green-100',
+        },
+        {
+            label: 'Next Service',
+            value: '2,547 mi',
+            subLabel: 'Scheduled: Dec 15, 2024',
+            icon: Wrench,
+            iconColor: 'text-orange-600',
+            iconBg: 'bg-orange-100',
+        }
     ];
+
+
 
     return (
         <div className="mx-auto flex flex-col gap-6 w-full animate-in fade-in duration-500">
@@ -1054,17 +1310,27 @@ export default function VehicleDetailPage() {
                 <span className="text-sm font-bold uppercase tracking-wider">Back to Vehicles</span>
             </button>
 
-            {/* KPI Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                {kpis.map((kpi) => (
-                    <div key={kpi.label} className={`bg-white p-5 rounded-2xl shadow-sm border ${kpi.border} hover:shadow-md transition-all duration-300 cursor-pointer group`}>
-                        <div className="flex items-center justify-between mb-3">
-                            <div className={`p-2.5 rounded-xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
-                                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+            {/* Metrics Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {metrics.map((metric) => (
+                    <div key={metric.label} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-start justify-between">
+                        <div>
+                            <div className={`w-10 h-10 rounded-lg ${metric.iconBg} flex items-center justify-center mb-4`}>
+                                <metric.icon className={`w-5 h-5 ${metric.iconColor}`} />
                             </div>
-                            <span className="text-2xl font-black text-gray-900 tabular-nums tracking-tighter capitalize">{kpi.value}</span>
+                            <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">{metric.label}</h3>
+                            <div className="text-2xl font-black text-gray-900 tracking-tight mb-1">{metric.value}</div>
+                            {metric.trend && (
+                                <p className={`text-xs font-bold ${metric.trendColor}`}>
+                                    {metric.trend} <span className="text-gray-400 font-medium ml-1">{metric.trendLabel}</span>
+                                </p>
+                            )}
+                            {metric.subLabel && (
+                                <p className="text-xs font-medium text-gray-400">
+                                    {metric.subLabel}
+                                </p>
+                            )}
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{kpi.label}</span>
                     </div>
                 ))}
             </div>
@@ -1090,132 +1356,175 @@ export default function VehicleDetailPage() {
                 {/* Tab Content */}
                 <div className="p-8 flex-1">
                     {activeTab === 'Overview' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in slide-in-from-left-2 duration-300">
-                            {/* Detailed Info Card */}
-                            <div className="lg:col-span-2 space-y-6">
-                                <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                                            <div className="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-                                            Core Details
-                                        </h3>
-                                        {!isEditing ? (
-                                            <Button
-                                                onClick={() => setIsEditing(true)}
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                            >
-                                                Edit Details
-                                            </Button>
-                                        ) : (
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    onClick={handleCancel}
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    Cancel
-                                                </Button>
-                                                <Button
-                                                    onClick={handleSubmit(onSave)}
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-xs font-bold text-white bg-teal-600 hover:bg-teal-700"
-                                                >
-                                                    Save Changes
-                                                </Button>
+                        <div className="flex flex-col gap-6 animate-in slide-in-from-left-2 duration-300">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Left Column: Vehicle Information (2/3 Width) */}
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-lg font-black text-gray-900 tracking-tight">Vehicle Information</h3>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+                                            {/* General Details */}
+                                            <div className="space-y-4">
+                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">General Details</h4>
+                                                <div className="grid grid-cols-2 gap-y-4">
+                                                    {[
+                                                        { label: 'Make', value: vehicle.make },
+                                                        { label: 'Model', value: vehicle.model },
+                                                        { label: 'Year', value: vehicle.year },
+                                                        { label: 'VIN', value: vehicle.registrationNumber || 'N/A' },
+                                                        { label: 'License Plate', value: `TRK-${vehicle.fleetNumber}` }, // Mocked based on ID
+                                                        { label: 'Color', value: 'White' }, // Mocked
+                                                    ].map((item, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                            <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-y-6 gap-x-12">
-                                        {[
-                                            { id: 'fleetNumber', label: 'Vehicle ID / Fleet Number *', value: vehicle.fleetNumber || vehicle.id, editable: true },
-                                            { id: 'registrationNumber', label: 'Registration Number', value: vehicle.registrationNumber, editable: true },
-                                            { id: 'vehicleType', label: 'Vehicle Type *', value: vehicle.vehicleType, editable: true },
-                                            { id: 'status', label: 'Status', value: vehicle.status, status: true, editable: false },
-                                            { id: 'make', label: 'Make *', value: vehicle.make, editable: true },
-                                            { id: 'model', label: 'Model *', value: vehicle.model, editable: true },
-                                            { id: 'year', label: 'Year', value: vehicle.year, editable: true },
-                                            { id: 'odometer', label: 'Odometer *', value: vehicle.odometer, highlight: true, editable: true },
-                                            { id: 'description', label: 'Description', value: vehicle.description, full: true, editable: true }
-                                        ].map((field: any, idx) => (
-                                            <div key={idx} className={`${field.full ? 'col-span-2' : 'col-span-1'} flex flex-col gap-1`}>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{field.label}</span>
-                                                {isEditing && field.editable ? (
-                                                    <div className="mt-1">
-                                                        {field.full ? (
-                                                            <textarea
-                                                                {...register(field.id as any)}
-                                                                className="w-full text-sm font-bold text-gray-800 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 min-h-[80px]"
-                                                            />
-                                                        ) : (
-                                                            <Input
-                                                                {...register(field.id as any)}
-                                                                className="h-9 text-sm font-bold text-gray-800 bg-white border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                                            />
-                                                        )}
-                                                        {errors[field.id as keyof VehicleDetailsFormValues] && (
-                                                            <span className="text-[9px] text-red-500 font-bold mt-1 uppercase">
-                                                                {errors[field.id as keyof VehicleDetailsFormValues]?.message}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className={`text-sm font-bold ${field.highlight ? 'text-blue-600 underline cursor-pointer' : field.link ? 'text-teal-600 underline cursor-pointer' : 'text-gray-800'}`}>
-                                                        {field.status && (
-                                                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${vehicle.status === 'Active' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                                                        )}
-                                                        {field.value}
-                                                    </span>
-                                                )}
+
+                                            {/* Technical Specifications */}
+                                            <div className="space-y-4">
+                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Technical Specifications</h4>
+                                                <div className="grid grid-cols-2 gap-y-4">
+                                                    {[
+                                                        { label: 'Engine Type', value: 'Detroit DD15' },
+                                                        { label: 'Transmission', value: '12-Speed Automated' },
+                                                        { label: 'Fuel Type', value: 'Diesel' },
+                                                        { label: 'GVWR', value: '80,000 lbs' },
+                                                        { label: 'Axle Config', value: '6x4' },
+                                                        { label: 'Wheelbase', value: '244 in' },
+                                                    ].map((item, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                            <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        ))}
+
+                                            {/* Assignment & Location */}
+                                            <div className="md:col-span-2 space-y-4 pt-4">
+                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Assignment & Location</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                                                    {[
+                                                        { label: 'Driver Assigned', value: 'Michael Roberts', link: true },
+                                                        { label: 'Current Location', value: 'Dallas, TX' },
+                                                        { label: 'Department', value: 'Long Haul' },
+                                                        { label: 'Home Terminal', value: 'Houston, TX' },
+                                                    ].map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between items-center">
+                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                            <div className={`text-xs font-bold ${item.link ? 'text-blue-600 cursor-pointer hover:underline' : 'text-gray-900'}`}>{item.value}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
-                                    <div className="relative z-10">
-                                        <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-4">Vehicle Description</h3>
-                                        <p className="text-gray-600 leading-relaxed text-sm">
-                                            {vehicle.description}. This asset is currently active in the {vehicle.location} hub, maintaining strict operational standards.
-                                        </p>
+                                {/* Right Column: Status & Quick Actions (1/3 Width) */}
+                                <div className="space-y-6">
+                                    {/* Current Status Card */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                        <h3 className="text-lg font-black text-gray-900 tracking-tight mb-6">Current Status</h3>
+                                        <div className="space-y-6">
+                                            <div className="flex gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Operational</p>
+                                                    <p className="text-xs text-gray-500">All systems normal</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-gray-100"></div>
+                                            <div className="flex gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                    <MapPin className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">In Transit</p>
+                                                    <p className="text-xs text-gray-500">Route: HOU → DAL</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-gray-100"></div>
+                                            <div className="flex gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">1 Alert</p>
+                                                    <p className="text-xs text-gray-500">Tire pressure low</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Actions Card */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                        <h3 className="text-lg font-black text-gray-900 tracking-tight mb-6">Quick Actions</h3>
+                                        <div className="space-y-3">
+                                            {[
+                                                { label: 'Schedule Inspection', icon: Calendar },
+                                                { label: 'Request Service', icon: Wrench },
+                                                { label: 'View Reports', icon: FileText },
+                                                { label: 'Track Location', icon: MapPin },
+                                            ].map((action) => (
+                                                <button key={action.label} className="w-full flex items-center gap-3 p-3 text-left rounded-lg bg-gray-50 hover:bg-teal-50 hover:text-teal-700 transition-colors group">
+                                                    <action.icon className="w-4 h-4 text-blue-600 group-hover:text-teal-600" />
+                                                    <span className="text-sm font-bold text-gray-700 group-hover:text-teal-700">{action.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Right Sidebar Area */}
-                            <div className="lg:col-span-1 space-y-6">
-                                {/* Open Issues Card */}
-                                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center justify-between">
-                                        Open Issues
-                                        <Badge variant="outline" className="text-[10px] font-bold">0 Active</Badge>
-                                    </h3>
-                                    <div className="flex flex-col items-center justify-center py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                                        <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                                            <CheckCircle2 className="w-6 h-6 text-green-500" />
+                            {/* Bottom Section: Recent Maintenance & Active Alerts */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-lg font-black text-gray-900 tracking-tight">Recent Maintenance</h3>
+                                        <button className="text-xs font-bold text-blue-600 hover:underline">View All</button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                    <div className="w-5 h-5 text-blue-600">🛢️</div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Oil Change</p>
+                                                    <p className="text-xs text-gray-500">Completed on Dec 1, 2024</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-600">$247</span>
                                         </div>
-                                        <p className="text-xs font-bold text-gray-500">All Systems Operational</p>
-                                        <p className="text-[10px] text-gray-400 mt-1">No open issues detected for this asset.</p>
                                     </div>
                                 </div>
 
-                                {/* Service Reminders Card */}
-                                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center justify-between">
-                                        Reminders
-                                        <Bell className="w-4 h-4 text-teal-500" />
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                            <Calendar className="w-4 h-4 text-blue-600" />
-                                            <div>
-                                                <p className="text-[11px] font-black text-blue-900">Next PM Service</p>
-                                                <p className="text-[10px] font-bold text-blue-600">In 20 days or 50 hrs</p>
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-lg font-black text-gray-900 tracking-tight">Active Alerts</h3>
+                                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">1 Critical</Badge>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                                                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Low Tire Pressure</p>
+                                                    <p className="text-xs text-gray-500">Reported today at 09:30 AM</p>
+                                                </div>
                                             </div>
+                                            <button className="text-xs font-bold text-blue-600 hover:text-blue-800">Resolve</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1339,38 +1648,370 @@ export default function VehicleDetailPage() {
                                     <div className="flex flex-col">
                                         <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
                                             <div className="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-                                            Tire Asset Management
+                                            {isRotationMode ? 'Interactive Tire Rotation' : (isIssuingMode ? 'Interactive Tire Issuing' : 'Tire Asset Management')}
                                         </h3>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 ml-3.5">Interactive Position Selection</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 ml-3.5">
+                                            {isRotationMode ? 'Select source tire then target position' : (isIssuingMode ? 'Select tire then click position' : 'Interactive Position Selection')}
+                                        </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button size="sm" className="font-bold bg-teal-600 hover:bg-teal-700 shadow-md">Issue New Tire</Button>
-                                        <Button variant="outline" size="sm" className="font-bold">Rotation Flow</Button>
+                                        {!isIssuingMode && !isRotationMode ? (
+                                            <>
+                                                <Button size="sm" className="font-bold bg-teal-600 hover:bg-teal-700 shadow-md" onClick={handleIssueTire}>Issue New Tire</Button>
+                                                <Button variant="outline" size="sm" className="font-bold flex gap-1.5" onClick={handleRotateTires}>
+                                                    <RefreshCcw className="w-3.5 h-3.5" />
+                                                    Rotation Flow
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="font-bold text-gray-500 hover:text-teal-600" onClick={() => setShowRuleBuilder(true)}>
+                                                    <ListFilter className="w-3.5 h-3.5 mr-1" />
+                                                    Rotation Rules
+                                                </Button>
+                                            </>
+                                        ) : isIssuingMode ? (
+                                            <>
+                                                <Button size="sm" variant="outline" className="font-bold text-red-600 border-red-200 hover:bg-red-50" onClick={handleCancelIssuing}>Cancel Issuing</Button>
+                                                <Button size="sm" className="font-bold bg-teal-600 hover:bg-teal-700 shadow-md" onClick={handleConfirmIssuance} disabled={Object.keys(pendingIssuance).length === 0}>Confirm Issue ({Object.keys(pendingIssuance).length})</Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button size="sm" variant="outline" className="font-bold text-red-600 border-red-200 hover:bg-red-50" onClick={handleCancelRotation}>Cancel Rotation</Button>
+                                                <Button size="sm" className="font-bold bg-teal-600 hover:bg-teal-700 shadow-md" onClick={handleConfirmRotation} disabled={Object.keys(pendingRotations).length === 0}>Confirm Rotation ({Object.keys(pendingRotations).length})</Button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="w-full max-w-4xl bg-white rounded-2xl border border-gray-100 p-10 flex justify-center relative z-10 shadow-inner">
-                                    {axles.length > 0 ? (
-                                        <VehicleAxleDiagram
-                                            data={{
-                                                vehicleId: vehicle.id,
-                                                vehicleType: (vehicle.vehicleType || 'TRUCK').toUpperCase() as any,
-                                                axles: axles.map(a => ({
-                                                    axleNumber: a.number,
-                                                    axleType: (a.liftAxle ? 'LIFT' : a.position.toUpperCase()) as any,
-                                                    tiresPerSide: a.tireConfig === 'Single' ? 1 : 2
-                                                }))
-                                            }}
-                                            tireStatuses={vehicle.tireStatuses}
-                                            onTireClick={(tire) => console.log('Selected Tire:', tire)}
-                                            className="!shadow-none !border-none !bg-transparent"
-                                        />
-                                    ) : (
-                                        <div className="text-center py-10 text-gray-400 font-medium">
-                                            No axle/tire data available.
+                                <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10 transition-all duration-500">
+                                    {/* Column 1: Axle Diagram (Span 5 in default, 8 in active) */}
+                                    <div className={`lg:col-span-${(isIssuingMode || isRotationMode) ? '8' : '5'} bg-white rounded-2xl border border-gray-100 p-4 flex flex-col relative shadow-sm h-[600px]`}>
+                                        <div className="w-full flex items-center justify-between mb-4">
+                                            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                                <div className="w-1.5 h-4 bg-teal-500 rounded-full"></div>
+                                                Axle Configuration
+                                            </h4>
+                                            <Badge variant="outline" className="text-[9px] font-bold px-2 py-0.5">Live View</Badge>
+                                        </div>
+                                        <div className="flex-1 flex flex-col items-center justify-center w-full">
+                                            {axles.length > 0 ? (
+                                                <VehicleAxleDiagram
+                                                    data={{
+                                                        vehicleId: vehicle.id,
+                                                        vehicleType: (vehicle.vehicleType || 'TRUCK').toUpperCase() as any,
+                                                        axles: axles.map(a => ({
+                                                            axleNumber: a.number,
+                                                            axleType: (a.liftAxle ? 'LIFT' : a.position.toUpperCase()) as any,
+                                                            tiresPerSide: a.tireConfig === 'Single' ? 1 : 2
+                                                        }))
+                                                    }}
+                                                    tireStatuses={vehicle.tireStatuses}
+                                                    pendingAssignments={isIssuingMode ? pendingIssuance : pendingRotations}
+                                                    selectedPositionId={isRotationMode ? selectedSourcePosition : selectedDiagramPosition}
+                                                    onTireClick={(tire) => {
+                                                        if (isIssuingMode) {
+                                                            if (selectedInventoryItemId) {
+                                                                const selectedSku = skus?.find((s: any) => s.id.toString() === selectedInventoryItemId);
+                                                                const axleNumber = parseInt(tire.positionId.split('-')[0].substring(1));
+                                                                const axle = axles.find(a => a.number === axleNumber);
+
+                                                                const isCompatible =
+                                                                    (axle?.position === 'Steer' && selectedSku?.category === 'Steer') ||
+                                                                    (axle?.position === 'Drive' && selectedSku?.category === 'Drive') ||
+                                                                    (axle?.position === 'Trailer' && selectedSku?.category === 'Trailer') ||
+                                                                    (axle?.position === 'Tag' && (selectedSku?.category === 'Steer' || selectedSku?.category === 'Drive')) ||
+                                                                    (!axle);
+
+                                                                if (!isCompatible) {
+                                                                    toast.error(`Incompatible Tire Category`, {
+                                                                        description: `${selectedSku?.category} SKU cannot be mounted on ${axle?.position} Axle.`
+                                                                    });
+                                                                    return;
+                                                                }
+
+                                                                setPendingIssuance(prev => ({
+                                                                    ...prev,
+                                                                    [tire.positionId]: selectedInventoryItemId!
+                                                                }));
+                                                                toast.success(`Tire ${selectedSku?.skuCode} staged for ${tire.positionId}`);
+                                                            } else {
+                                                                setSelectedDiagramPosition(prev => prev === tire.positionId ? null : tire.positionId);
+                                                            }
+                                                        } else if (isRotationMode) {
+                                                            if (!selectedSourcePosition) {
+                                                                if (vehicle.tireStatuses?.[tire.positionId] === 'EMPTY') {
+                                                                    toast.info('Cannot rotate an empty position. Select a mounted tire.');
+                                                                    return;
+                                                                }
+                                                                setSelectedSourcePosition(tire.positionId);
+                                                                toast.info(`Selected ${tire.positionId} as source. Now click target position.`);
+                                                            } else {
+                                                                const sourcePos = selectedSourcePosition;
+                                                                if (sourcePos === tire.positionId) {
+                                                                    setSelectedSourcePosition(null);
+                                                                    return;
+                                                                }
+                                                                const isTargetBodyOccupied = vehicle.tireStatuses?.[tire.positionId] !== 'EMPTY';
+                                                                if (isTargetBodyOccupied) {
+                                                                    toast.success(`Staged swap: ${sourcePos} ↔ ${tire.positionId}`);
+                                                                    setPendingRotations(prev => ({
+                                                                        ...prev,
+                                                                        [tire.positionId]: sourcePos,
+                                                                        [sourcePos]: tire.positionId
+                                                                    }));
+                                                                } else {
+                                                                    toast.success(`Staged move: ${sourcePos} → ${tire.positionId}`);
+                                                                    setPendingRotations(prev => ({
+                                                                        ...prev,
+                                                                        [tire.positionId]: sourcePos
+                                                                    }));
+                                                                }
+                                                                setSelectedSourcePosition(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className={`!shadow-none !border-none !bg-transparent ${(isIssuingMode || isRotationMode) ? 'scale-110' : 'scale-90'}`}
+                                                />
+                                            ) : (
+                                                <div className="text-center py-10 text-gray-400 font-medium text-xs">No axle data.</div>
+                                            )}
+                                            {isIssuingMode && selectedInventoryItemId && (
+                                                <div className="mt-4 w-full p-2 bg-teal-50 border border-teal-100 rounded-lg flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1 px-1.5 bg-teal-600 rounded text-white text-[9px] font-black uppercase">
+                                                            {skus?.find((s: any) => s.id.toString() === selectedInventoryItemId)?.skuCode}
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-teal-600 uppercase">Ready to mount</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Column 2: Latest Activity (Span 3) - Only visible in default view */}
+                                    {(!isIssuingMode && !isRotationMode) && (
+                                        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 h-[600px] flex flex-col">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                                    <History className="w-3.5 h-3.5 text-teal-500" />
+                                                    Latest Actions
+                                                </h4>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase bg-gray-50">Audit</Badge>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                                {activityLogs.length === 0 ? (
+                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-40">
+                                                        <Clock className="w-8 h-8 text-gray-200 mb-2" />
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">No history recorded for this asset</p>
+                                                    </div>
+                                                ) : (
+                                                    activityLogs.map((log) => (
+                                                        <div key={log.id} className={`p-3 rounded-xl border transition-all group ${log.type === 'remove' ? 'border-red-100 bg-red-50/20' :
+                                                            log.type === 'install' ? 'border-green-100 bg-green-50/20' :
+                                                                'border-gray-100 bg-gray-50/30'
+                                                            }`}>
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex flex-col">
+                                                                    <span className={`text-[9px] font-black uppercase ${log.type === 'remove' ? 'text-red-600' :
+                                                                        log.type === 'install' ? 'text-green-600' :
+                                                                            'text-teal-600'
+                                                                        }`}>
+                                                                        {log.type === 'rotation' ? 'Rotation' : log.type === 'install' ? 'New Install' : 'Removal'}
+                                                                    </span>
+                                                                    <span className="text-[8px] font-bold text-gray-400 uppercase">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                </div>
+                                                                {log.type === 'rotation' && (
+                                                                    <button onClick={() => handleRevertRotation(log.id)} className="p-1 text-gray-300 hover:text-teal-600">
+                                                                        <RotateCcw className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {log.type === 'rotation' ? (
+                                                                <div className="flex items-center justify-between bg-white px-2 py-1 rounded-lg border border-gray-100/50">
+                                                                    <span className="text-[9px] font-black text-gray-600">{log.sourcePositionId}</span>
+                                                                    <ArrowRight className="w-2.5 h-2.5 text-teal-400" />
+                                                                    <span className="text-[9px] font-black text-teal-700">{log.targetPositionId}</span>
+                                                                </div>
+                                                            ) : log.type === 'install' ? (
+                                                                <div className="flex flex-col gap-1 bg-white px-2 py-1.5 rounded-lg border border-green-100/50">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-[9px] font-black text-gray-600">{log.positionId}</span>
+                                                                        <span className="text-[9px] font-bold text-green-600">{log.sku}</span>
+                                                                    </div>
+                                                                    <span className="text-[8px] text-gray-400 font-medium truncate">{log.tireName}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-1 bg-white px-2 py-1.5 rounded-lg border border-red-100/50">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-[9px] font-black text-gray-600">{log.positionId}</span>
+                                                                        <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-red-100 text-red-600 uppercase bg-red-50">{log.disposition}</Badge>
+                                                                    </div>
+                                                                    <span className="text-[8px] text-gray-400 font-medium">{log.reason}</span>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="mt-2 flex items-center justify-between">
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${log.type === 'remove' ? 'bg-red-100' :
+                                                                        log.type === 'install' ? 'bg-green-100' :
+                                                                            'bg-teal-100'
+                                                                        }`}>
+                                                                        <User className={`w-2 h-2 ${log.type === 'remove' ? 'text-red-600' :
+                                                                            log.type === 'install' ? 'text-green-600' :
+                                                                                'text-teal-600'
+                                                                            }`} />
+                                                                    </div>
+                                                                    <span className="text-[8px] font-bold text-gray-500">{log.performedBy}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
                                         </div>
                                     )}
+
+                                    {/* Column 3: Rotation Rules / Staging (Span 4) */}
+                                    <div className="lg:col-span-4 flex flex-col gap-4 h-[600px]">
+                                        {isIssuingMode ? (
+                                            <>
+                                                <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col overflow-hidden">
+                                                    <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                        <Package className="w-3.5 h-3.5 text-teal-500" />
+                                                        Available Inventory
+                                                    </h4>
+                                                    <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                                                        {skus?.map((sku: any) => (
+                                                            <div
+                                                                key={sku.id}
+                                                                onClick={() => setSelectedInventoryItemId(sku.id.toString())}
+                                                                className={`p-2.5 rounded-xl border transition-all cursor-pointer ${selectedInventoryItemId === sku.id.toString() ? 'border-teal-500 bg-teal-50/50' : 'border-gray-100 hover:border-teal-200'}`}
+                                                            >
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="text-[8px] font-black text-teal-600 bg-teal-50 px-1 rounded uppercase tracking-tighter">{sku.skuCode}</span>
+                                                                    <span className="text-[8px] font-bold text-gray-400">Qty: 4</span>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-gray-800 mt-1">{sku.brand} {sku.model}</p>
+                                                                <p className="text-[8px] text-gray-400 uppercase tracking-widest">{sku.size} • {sku.category}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+
+                                                {/* Removal Disposition Card */}
+                                                {isIssuingMode && Object.keys(pendingIssuance).some(pos => vehicle.tireStatuses?.[pos] && vehicle.tireStatuses[pos] !== 'EMPTY') && (
+                                                    <div className="h-48 bg-white rounded-2xl border border-red-50 shadow-sm p-4 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300">
+                                                        <h4 className="text-[10px] font-black text-red-900 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                            <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                                                            Removal Disposition
+                                                        </h4>
+                                                        <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                                                            {Object.keys(pendingIssuance)
+                                                                .filter(pos => vehicle.tireStatuses?.[pos] && vehicle.tireStatuses[pos] !== 'EMPTY')
+                                                                .map(pos => (
+                                                                    <div key={pos} className="p-2 rounded-lg border border-red-100 bg-red-50/20">
+                                                                        <div className="flex justify-between items-center mb-2">
+                                                                            <span className="text-[9px] font-black text-gray-700">Removing from <span className="text-red-600">{pos}</span></span>
+                                                                            {pendingDispositions[pos] ? (
+                                                                                <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-red-200 text-red-700 uppercase bg-white">{pendingDispositions[pos]}</Badge>
+                                                                            ) : (
+                                                                                <span className="text-[7px] font-bold text-red-400 uppercase animate-pulse">Action Required</span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="grid grid-cols-3 gap-1">
+                                                                            {['Inventory', 'Quarantine', 'Scrap'].map((option) => (
+                                                                                <button
+                                                                                    key={option}
+                                                                                    onClick={() => setPendingDispositions(prev => ({ ...prev, [pos]: option as any }))}
+                                                                                    className={`py-1.5 px-1 rounded text-[8px] font-bold uppercase border transition-all ${pendingDispositions[pos] === option
+                                                                                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                                                                                        : 'bg-white text-gray-500 border-gray-100 hover:border-red-200 hover:text-red-500'
+                                                                                        }`}
+                                                                                >
+                                                                                    {option}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : isRotationMode ? (
+                                            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col overflow-hidden">
+                                                <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                    <RefreshCcw className="w-3.5 h-3.5 text-teal-500" />
+                                                    Staged Rotation
+                                                </h4>
+                                                <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                                                    {Object.entries(pendingRotations).length === 0 ? (
+                                                        <div className="h-full flex flex-col items-center justify-center opacity-30">
+                                                            <ArrowRightLeft className="w-6 h-6 text-gray-300 mb-2" />
+                                                            <p className="text-[9px] font-black uppercase text-gray-400">Empty Staging</p>
+                                                        </div>
+                                                    ) : (
+                                                        Object.entries(pendingRotations).map(([target, source]) => (
+                                                            <div key={target} className="p-2.5 rounded-xl border border-teal-100 bg-teal-50/20 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[9px] font-black text-gray-500">{source}</span>
+                                                                    <ArrowRight className="w-3 h-3 text-teal-400" />
+                                                                    <span className="text-[9px] font-black text-teal-700">{target}</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setPendingRotations(prev => {
+                                                                        const next = { ...prev };
+                                                                        delete next[target];
+                                                                        return next;
+                                                                    })}
+                                                                    className="text-gray-300 hover:text-red-500"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col overflow-hidden">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                                        <ListFilter className="w-3.5 h-3.5 text-teal-500" />
+                                                        Engineered Rules
+                                                    </h4>
+                                                    <button onClick={() => setShowRuleBuilder(true)} className="p-1 text-teal-600 hover:bg-teal-50 rounded">
+                                                        <Plus className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+                                                    {rotationRules.map((rule) => (
+                                                        <div key={rule.id} className="p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/10 transition-all flex flex-col gap-2">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <h5 className="text-[10px] font-black text-gray-900 uppercase tracking-tight">{rule.name}</h5>
+                                                                    <p className="text-[8px] text-gray-400 mt-0.5 line-clamp-1">{rule.description}</p>
+                                                                </div>
+                                                                <Badge variant="outline" className="text-[7px] font-black h-4 px-1">{rule.axleCount} Axles</Badge>
+                                                            </div>
+                                                            <Button
+                                                                size="sm"
+                                                                className="w-full h-8 text-[9px] font-black uppercase tracking-widest"
+                                                                onClick={() => handleApplyRule(rule)}
+                                                                disabled={rule.axleCount > axles.length}
+                                                            >
+                                                                Stage Rule
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Old bottom rules section removed (now in Col 3) */}
 
                                 <div className="mt-6 flex gap-6 text-[10px] font-bold uppercase tracking-widest text-gray-400 relative z-10">
                                     <div className="flex items-center gap-2">
@@ -1402,6 +2043,132 @@ export default function VehicleDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Rotation Rule Builder Modal */}
+            <Transition.Root show={showRuleBuilder} as={Fragment}>
+                <Dialog as="div" className="relative z-[100]" onClose={setShowRuleBuilder}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 z-10 overflow-y-auto">
+                        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                enterTo="opacity-100 translate-y-0 sm:scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                                leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                            >
+                                <Dialog.Panel className="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                                    <div className="bg-white px-8 pt-8 pb-6">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div>
+                                                <Dialog.Title as="h3" className="text-xl font-black text-gray-900 uppercase tracking-tight">
+                                                    Rule Engine Builder
+                                                </Dialog.Title>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Design a reusable rotation pattern</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="rounded-full bg-gray-50 p-2 text-gray-400 hover:text-gray-500 transition-colors"
+                                                onClick={() => setShowRuleBuilder(false)}
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Rule Name</label>
+                                                <Input
+                                                    placeholder="e.g., Highway Efficiency Pattern"
+                                                    className="rounded-xl border-gray-100 font-bold text-sm h-12 focus:ring-teal-500/20 focus:border-teal-500"
+                                                    id="rule-name"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Description</label>
+                                                <Input
+                                                    placeholder="Describe when to use this rule..."
+                                                    className="rounded-xl border-gray-100 font-bold text-sm h-12 focus:ring-teal-500/20 focus:border-teal-500"
+                                                    id="rule-desc"
+                                                />
+                                            </div>
+
+                                            <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6">
+                                                <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                    <ArrowRightLeft className="w-3.5 h-3.5 text-teal-500" />
+                                                    Define Movement Patterns
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    {/* Mock pattern builder rows */}
+                                                    {[1, 2].map(i => (
+                                                        <div key={i} className="flex items-center gap-3">
+                                                            <select className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-gray-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                                                <option>Source Position</option>
+                                                                <option>A1-L1</option>
+                                                                <option>A1-R1</option>
+                                                                <option>A2-L1</option>
+                                                                <option>A2-R1</option>
+                                                            </select>
+                                                            <ArrowRight className="w-4 h-4 text-gray-300" />
+                                                            <select className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-gray-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                                                <option>Target Position</option>
+                                                                <option>A1-L1</option>
+                                                                <option>A1-R1</option>
+                                                                <option>A2-L1</option>
+                                                                <option>A2-R1</option>
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                    <button className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[9px] font-black text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all uppercase">+ Add Move</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 px-8 py-6 flex gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest h-12"
+                                            onClick={() => setShowRuleBuilder(false)}
+                                        >
+                                            Discard
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            className="flex-1 rounded-xl bg-gray-900 hover:bg-teal-600 text-white font-black text-[10px] uppercase tracking-widest h-12 shadow-lg"
+                                            onClick={() => {
+                                                const name = (document.getElementById('rule-name') as HTMLInputElement).value || 'New Rule';
+                                                const desc = (document.getElementById('rule-desc') as HTMLInputElement).value || 'No description';
+                                                handleAddRule({
+                                                    name,
+                                                    description: desc,
+                                                    axleCount: 2,
+                                                    pattern: { 'A1-L1': 'A2-R1', 'A1-R1': 'A2-L1' }
+                                                });
+                                            }}
+                                        >
+                                            Save Rule Pattern
+                                        </Button>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition.Root>
         </div>
     );
 }
