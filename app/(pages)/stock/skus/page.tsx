@@ -35,7 +35,7 @@ export default function SKUCatalogPage() {
     return (
         <div className="mx-auto flex flex-col gap-6">
             <div className="bg-white text-black rounded-lg shadow-md p-6 space-y-6">
-                <SKUTable onAdd={handleOpenModal} />
+                <SKUTable />
             </div>
 
             {/* Modal */}

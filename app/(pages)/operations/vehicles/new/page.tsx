@@ -74,7 +74,7 @@ export default function AddVehiclePage() {
     const router = useRouter();
     const { setHeader } = useHeader();
     const { data: skus } = useSKUsQuery();
-    
+
     const [currentStep, setCurrentStep] = useState(1);
     const [vehicleData, setVehicleData] = useState<VehicleFormData>({
         vehicleId: '',
@@ -87,7 +87,7 @@ export default function AddVehiclePage() {
         assetTolerance: 0,
         toleranceBasis: 'None',
     });
-    
+
     const [axles, setAxles] = useState<Axle[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [showAddAxle, setShowAddAxle] = useState(false);
@@ -205,16 +205,16 @@ export default function AddVehiclePage() {
     };
 
     const handleAddSKURule = (positionId: string, rule: SKURule) => {
-        setPositions(positions.map(pos => 
-            pos.id === positionId 
+        setPositions(positions.map(pos =>
+            pos.id === positionId
                 ? { ...pos, skuRules: [...pos.skuRules, rule] }
                 : pos
         ));
     };
 
     const handleRemoveSKURule = (positionId: string, ruleId: string) => {
-        setPositions(positions.map(pos => 
-            pos.id === positionId 
+        setPositions(positions.map(pos =>
+            pos.id === positionId
                 ? { ...pos, skuRules: pos.skuRules.filter(r => r.id !== ruleId) }
                 : pos
         ));
@@ -249,19 +249,17 @@ export default function AddVehiclePage() {
                                 <button
                                     onClick={() => isAccessible && setCurrentStep(step.number)}
                                     disabled={!isAccessible}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                                        isActive
-                                            ? 'bg-teal-600 text-white shadow-lg'
-                                            : isComplete
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
+                                        ? 'bg-teal-600 text-white shadow-lg'
+                                        : isComplete
                                             ? 'bg-teal-50 text-teal-700 hover:bg-teal-100'
                                             : isAccessible
-                                            ? 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                                    }`}
+                                                ? 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                                : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                                        }`}
                                 >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                        isActive ? 'bg-white/20' : isComplete ? 'bg-teal-600 text-white' : 'bg-gray-200'
-                                    }`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/20' : isComplete ? 'bg-teal-600 text-white' : 'bg-gray-200'
+                                        }`}>
                                         {isComplete ? (
                                             <CheckCircle2 className="w-5 h-5" />
                                         ) : (
@@ -274,9 +272,8 @@ export default function AddVehiclePage() {
                                     </div>
                                 </button>
                                 {index < steps.length - 1 && (
-                                    <ChevronRight className={`w-5 h-5 ${
-                                        isComplete ? 'text-teal-600' : 'text-gray-300'
-                                    }`} />
+                                    <ChevronRight className={`w-5 h-5 ${isComplete ? 'text-teal-600' : 'text-gray-300'
+                                        }`} />
                                 )}
                             </React.Fragment>
                         );
@@ -835,7 +832,7 @@ function PositionRulesCard({
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-medium text-gray-500">OR</span>
                                 <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-                                    {rule.type === 'specific' 
+                                    {rule.type === 'specific'
                                         ? getSKUName(rule.skuId!)
                                         : `Category: ${rule.category}`
                                     }
@@ -1002,7 +999,7 @@ function ReviewSummary({
                                                 <div className="ml-2 mt-1 space-y-1">
                                                     {pos.skuRules.map(rule => (
                                                         <Badge key={rule.id} variant="outline" className="mr-1">
-                                                            {rule.type === 'specific' 
+                                                            {rule.type === 'specific'
                                                                 ? getSKUName(rule.skuId!)
                                                                 : `Category: ${rule.category}`
                                                             }

@@ -1254,7 +1254,11 @@ export default function VehicleDetailPage() {
                     <Button variant="outline" size="sm" className="font-bold shadow-sm h-9 bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
                         <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
-                    <Button size="sm" className="font-bold shadow-sm h-9 bg-blue-700 hover:bg-blue-800 text-white">
+                    <Button
+                        onClick={() => setIsEditing(!isEditing)}
+                        size="sm"
+                        className="font-bold shadow-sm h-9 bg-blue-700 hover:bg-blue-800 text-white"
+                    >
                         <Edit className="w-4 h-4 mr-2" /> Edit Vehicle
                     </Button>
                 </div>
@@ -1363,67 +1367,207 @@ export default function VehicleDetailPage() {
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full">
                                         <div className="flex items-center justify-between mb-6">
                                             <h3 className="text-lg font-black text-gray-900 tracking-tight">Vehicle Information</h3>
+                                            {isEditing && (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleCancel}
+                                                        className="font-medium"
+                                                    >
+                                                        <X className="w-4 h-4 mr-1" />
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        type="submit"
+                                                        size="sm"
+                                                        onClick={handleSubmit(onSave)}
+                                                        className="bg-teal-600 hover:bg-teal-700 font-medium"
+                                                    >
+                                                        <Save className="w-4 h-4 mr-1" />
+                                                        Save Changes
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
-                                            {/* General Details */}
-                                            <div className="space-y-4">
-                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">General Details</h4>
-                                                <div className="grid grid-cols-2 gap-y-4">
-                                                    {[
-                                                        { label: 'Make', value: vehicle.make },
-                                                        { label: 'Model', value: vehicle.model },
-                                                        { label: 'Year', value: vehicle.year },
-                                                        { label: 'VIN', value: vehicle.registrationNumber || 'N/A' },
-                                                        { label: 'License Plate', value: `TRK-${vehicle.fleetNumber}` }, // Mocked based on ID
-                                                        { label: 'Color', value: 'White' }, // Mocked
-                                                    ].map((item, idx) => (
-                                                        <React.Fragment key={idx}>
-                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                                                            <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
-                                                        </React.Fragment>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                        {isEditing ? (
+                                            <FormProvider {...{ register, handleSubmit, reset, formState: { errors } }}>
+                                                <form className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                                                    {/* General Details */}
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">General Details</h4>
 
-                                            {/* Technical Specifications */}
-                                            <div className="space-y-4">
-                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Technical Specifications</h4>
-                                                <div className="grid grid-cols-2 gap-y-4">
-                                                    {[
-                                                        { label: 'Engine Type', value: 'Detroit DD15' },
-                                                        { label: 'Transmission', value: '12-Speed Automated' },
-                                                        { label: 'Fuel Type', value: 'Diesel' },
-                                                        { label: 'GVWR', value: '80,000 lbs' },
-                                                        { label: 'Axle Config', value: '6x4' },
-                                                        { label: 'Wheelbase', value: '244 in' },
-                                                    ].map((item, idx) => (
-                                                        <React.Fragment key={idx}>
-                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                                                            <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
-                                                        </React.Fragment>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Assignment & Location */}
-                                            <div className="md:col-span-2 space-y-4 pt-4">
-                                                <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Assignment & Location</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                                                    {[
-                                                        { label: 'Driver Assigned', value: 'Michael Roberts', link: true },
-                                                        { label: 'Current Location', value: 'Dallas, TX' },
-                                                        { label: 'Department', value: 'Long Haul' },
-                                                        { label: 'Home Terminal', value: 'Houston, TX' },
-                                                    ].map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center">
-                                                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                                                            <div className={`text-xs font-bold ${item.link ? 'text-blue-600 cursor-pointer hover:underline' : 'text-gray-900'}`}>{item.value}</div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Fleet Number *</label>
+                                                            <Input
+                                                                {...register('fleetNumber')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter fleet number"
+                                                            />
+                                                            {errors.fleetNumber && (
+                                                                <p className="text-xs text-red-600">{errors.fleetNumber.message}</p>
+                                                            )}
                                                         </div>
-                                                    ))}
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Make *</label>
+                                                            <Input
+                                                                {...register('make')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter make"
+                                                            />
+                                                            {errors.make && (
+                                                                <p className="text-xs text-red-600">{errors.make.message}</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Model *</label>
+                                                            <Input
+                                                                {...register('model')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter model"
+                                                            />
+                                                            {errors.model && (
+                                                                <p className="text-xs text-red-600">{errors.model.message}</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Year</label>
+                                                            <Input
+                                                                {...register('year')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter year"
+                                                            />
+                                                            {errors.year && (
+                                                                <p className="text-xs text-red-600">{errors.year.message}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Additional Details */}
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Additional Details</h4>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">VIN / Registration Number</label>
+                                                            <Input
+                                                                {...register('registrationNumber')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter VIN"
+                                                            />
+                                                            {errors.registrationNumber && (
+                                                                <p className="text-xs text-red-600">{errors.registrationNumber.message}</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Vehicle Type *</label>
+                                                            <select
+                                                                {...register('vehicleType')}
+                                                                className="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                                                            >
+                                                                <option value="">Select type...</option>
+                                                                <option value="Truck">Truck</option>
+                                                                <option value="Bus">Bus</option>
+                                                                <option value="Trailer">Trailer</option>
+                                                            </select>
+                                                            {errors.vehicleType && (
+                                                                <p className="text-xs text-red-600">{errors.vehicleType.message}</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Odometer *</label>
+                                                            <Input
+                                                                {...register('odometer')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter odometer reading"
+                                                            />
+                                                            {errors.odometer && (
+                                                                <p className="text-xs text-red-600">{errors.odometer.message}</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">Description</label>
+                                                            <textarea
+                                                                {...register('description')}
+                                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none resize-none"
+                                                                rows={3}
+                                                                placeholder="Enter description"
+                                                            />
+                                                            {errors.description && (
+                                                                <p className="text-xs text-red-600">{errors.description.message}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </FormProvider>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+                                                {/* General Details */}
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">General Details</h4>
+                                                    <div className="grid grid-cols-2 gap-y-4">
+                                                        {[
+                                                            { label: 'Make', value: vehicle.make },
+                                                            { label: 'Model', value: vehicle.model },
+                                                            { label: 'Year', value: vehicle.year },
+                                                            { label: 'VIN', value: vehicle.registrationNumber || 'N/A' },
+                                                            { label: 'License Plate', value: `TRK-${vehicle.fleetNumber}` }, // Mocked based on ID
+                                                            { label: 'Color', value: 'White' }, // Mocked
+                                                        ].map((item, idx) => (
+                                                            <React.Fragment key={idx}>
+                                                                <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                                <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Technical Specifications */}
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Technical Specifications</h4>
+                                                    <div className="grid grid-cols-2 gap-y-4">
+                                                        {[
+                                                            { label: 'Engine Type', value: 'Detroit DD15' },
+                                                            { label: 'Transmission', value: '12-Speed Automated' },
+                                                            { label: 'Fuel Type', value: 'Diesel' },
+                                                            { label: 'GVWR', value: '80,000 lbs' },
+                                                            { label: 'Axle Config', value: '6x4' },
+                                                            { label: 'Wheelbase', value: '244 in' },
+                                                        ].map((item, idx) => (
+                                                            <React.Fragment key={idx}>
+                                                                <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                                <div className="text-xs font-bold text-gray-900 text-right">{item.value}</div>
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Assignment & Location */}
+                                                <div className="md:col-span-2 space-y-4 pt-4">
+                                                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Assignment & Location</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                                                        {[
+                                                            { label: 'Driver Assigned', value: 'Michael Roberts', link: true },
+                                                            { label: 'Current Location', value: 'Dallas, TX' },
+                                                            { label: 'Department', value: 'Long Haul' },
+                                                            { label: 'Home Terminal', value: 'Houston, TX' },
+                                                        ].map((item, idx) => (
+                                                            <div key={idx} className="flex justify-between items-center">
+                                                                <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                                                                <div className={`text-xs font-bold ${item.link ? 'text-blue-600 cursor-pointer hover:underline' : 'text-gray-900'}`}>{item.value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1683,7 +1827,10 @@ export default function VehicleDetailPage() {
 
                                 <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10 transition-all duration-500">
                                     {/* Column 1: Axle Diagram (Span 5 in default, 8 in active) */}
-                                    <div className={`lg:col-span-${(isIssuingMode || isRotationMode) ? '8' : '5'} bg-white rounded-2xl border border-gray-100 p-4 flex flex-col relative shadow-sm h-[600px]`}>
+                                    <div className={(isIssuingMode || isRotationMode)
+                                        ? "lg:col-span-8 bg-white rounded-2xl border border-gray-100 p-4 flex flex-col relative shadow-sm h-[600px]"
+                                        : "lg:col-span-5 bg-white rounded-2xl border border-gray-100 p-4 flex flex-col relative shadow-sm h-[600px]"
+                                    }>
                                         <div className="w-full flex items-center justify-between mb-4">
                                             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
                                                 <div className="w-1.5 h-4 bg-teal-500 rounded-full"></div>
@@ -2169,6 +2316,6 @@ export default function VehicleDetailPage() {
                     </div>
                 </Dialog>
             </Transition.Root>
-        </div>
+        </div >
     );
 }

@@ -13,23 +13,30 @@ export interface VehicleAxleData {
 
 interface VehicleAxleDiagramProps {
     data?: VehicleAxleData;
+    axleConfiguration?: VehicleAxleData; // Alias for data (for compatibility)
     isLoading?: boolean;
     onTireClick?: (position: TirePosition & { status: TireStatus }) => void;
     tireStatuses?: Record<string, TireStatus>;
     pendingAssignments?: Record<string, string>;
     selectedPositionId?: string | null;
+    selectedPosition?: string | null; // Alias for selectedPositionId
     className?: string;
 }
 
 export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
     data,
+    axleConfiguration,
     isLoading = false,
     onTireClick,
     tireStatuses = {},
     pendingAssignments = {},
     selectedPositionId = null,
+    selectedPosition = null,
     className = '',
 }) => {
+    // Support both prop names for compatibility
+    const vehicleData = data || axleConfiguration;
+    const selectedId = selectedPositionId || selectedPosition;
     const [hoveredTire, setHoveredTire] = useState<{ position: TirePosition & { status: TireStatus }, x: number, y: number } | null>(null);
     const [selectedTire, setSelectedTire] = useState<TirePosition & { status: TireStatus } | null>(null);
 
@@ -47,12 +54,12 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
 
     // Calculate cumulative Y positions for axles
     const axleLayout = useMemo(() => {
-        if (!data?.axles) return [];
+        if (!vehicleData?.axles) return [];
         let currentY = paddingY;
-        return data.axles.map((axle, index) => {
+        return vehicleData.axles.map((axle, index) => {
             const y = currentY;
             const isSteer = axle.axleType === 'STEER';
-            const nextAxleIsDriveOrTrailer = data.axles[index + 1] && data.axles[index + 1].axleType !== 'STEER';
+            const nextAxleIsDriveOrTrailer = vehicleData.axles[index + 1] && vehicleData.axles[index + 1].axleType !== 'STEER';
 
             if (isSteer && nextAxleIsDriveOrTrailer) {
                 currentY += steerDriveGap;
@@ -61,7 +68,7 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
             }
             return { ...axle, y };
         });
-    }, [data, paddingY, normalAxleSpacing, steerDriveGap]);
+    }, [vehicleData, paddingY, normalAxleSpacing, steerDriveGap]);
 
     const height = axleLayout.length > 0
         ? axleLayout[axleLayout.length - 1].y + paddingY + 40
@@ -87,7 +94,7 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
         );
     }
 
-    if (!data || !data.axles || data.axles.length === 0) {
+    if (!vehicleData || !vehicleData.axles || vehicleData.axles.length === 0) {
         return (
             <div className={`flex flex-col items-center justify-center p-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 ${className}`}>
                 <div className="p-4 bg-white rounded-full shadow-sm mb-4">
@@ -145,7 +152,7 @@ export const VehicleAxleDiagram: React.FC<VehicleAxleDiagramProps> = ({
                         axleWidth={axleWidth}
                         tireStatuses={tireStatuses}
                         pendingAssignments={pendingAssignments}
-                        selectedPositionId={selectedPositionId}
+                        selectedPositionId={selectedId}
                         onTireClick={(tire) => {
                             setSelectedTire(tire);
                             onTireClick?.(tire);

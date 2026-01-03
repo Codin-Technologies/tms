@@ -97,17 +97,17 @@ export function DataTable<TData, TValue>({
         <div className="flex justify-between w-full items-center gap-2">
           {title && <h2 className="text-3xl font-bold">{title}</h2>}
 
-          {onAdd && (
-            <div className="flex items-center justify-between gap-2">
-              <Input
-                placeholder="Search..."
-                value={globalFilter}
-                onChange={(event) => setGlobalFilter(event.target.value)}
-                className="max-w-sm"
-              />
-              {onAdd && <Button onClick={onAdd} className="border-2 border-rounded bg-transparent p-1.5 hover:bg-black/20"><PlusIcon stroke="black"/></Button>}
-            </div>
-          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <Input
+              placeholder="Search..."
+              value={globalFilter}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              className="max-w-sm"
+            />
+            {onAdd && <Button onClick={onAdd} className="border-2 border-rounded bg-transparent p-1.5 hover:bg-black/20"><PlusIcon stroke="black" /></Button>}
+          </div>
+
         </div>
       </div>
       <div className="rounded-md border">

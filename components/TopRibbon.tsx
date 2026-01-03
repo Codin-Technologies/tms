@@ -1,11 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useHeader } from "./HeaderContext";
 import { Search, Bell, Plus } from "lucide-react";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default function TopRibbon() {
   const { header } = useHeader();
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  // Sample unread count - in real app, this would come from notification data
+  const unreadCount = 3;
 
   return (
     <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -28,10 +33,26 @@ export default function TopRibbon() {
               </div>
             )}
 
-            <button className="relative p-2.5 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell size={20} className="text-gray-600" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Notification Button with Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="relative p-2.5 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell size={20} className="text-gray-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <NotificationDropdown
+                isOpen={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+              />
+            </div>
 
             {header.actions ? (
               header.actions

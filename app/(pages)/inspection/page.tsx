@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useHeader } from '@/components/HeaderContext'
 import { Search, Download, Plus, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import {  useInspectionOverviewQuery } from './query';
+import { useInspectionOverviewQuery } from './query';
 
 // Types
 interface InspectionRecord {
@@ -90,18 +91,18 @@ const mockRecords: InspectionRecord[] = [
 ];
 
 // Stats Card Component
-const StatsCard = ({ 
-  title, 
-  value, 
-  change, 
-  icon, 
-  iconBg, 
-  changeType 
-}: { 
-  title: string; 
-  value: string | number; 
-  change: string; 
-  icon: React.ReactNode; 
+const StatsCard = ({
+  title,
+  value,
+  change,
+  icon,
+  iconBg,
+  changeType
+}: {
+  title: string;
+  value: string | number;
+  change: string;
+  icon: React.ReactNode;
   iconBg: string;
   changeType?: 'up' | 'down' | 'neutral' | 'warning';
 }) => {
@@ -136,7 +137,9 @@ const StatsCard = ({
 };
 
 // Main Component
+// Main Component
 export default function InspectionPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('30');
@@ -144,13 +147,13 @@ export default function InspectionPage() {
   const [inspector, setInspector] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
-  const { isLoading, error, data: inspectionOverview} = useInspectionOverviewQuery();
+  const { isLoading, error, data: inspectionOverview } = useInspectionOverviewQuery();
 
   // Filter records
   const filteredRecords = mockRecords.filter((record) => {
     if (statusFilter !== 'all' && record.status !== statusFilter) return false;
     if (searchQuery && !record.vehicleId.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !record.vehicleName.toLowerCase().includes(searchQuery.toLowerCase())) {
+      !record.vehicleName.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     return true;
@@ -174,7 +177,10 @@ export default function InspectionPage() {
             <Download className="w-5 h-5" />
             Export
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium">
+          <button
+            onClick={() => router.push('/inspection/new')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
+          >
             <Plus className="w-5 h-5" />
             New Inspection
           </button>
@@ -193,7 +199,7 @@ export default function InspectionPage() {
         <StatsCard
           title="Total Inspections"
           value={inspectionOverview ? inspectionOverview.data?.totalInspections.value : 0}
-          change={`${inspectionOverview?inspectionOverview.data?.totalInspections.monthGrowth : 0} from last month`}
+          change={`${inspectionOverview ? inspectionOverview.data?.totalInspections.monthGrowth : 0} from last month`}
           icon={<CheckCircle className="w-6 h-6 text-blue-600" />}
           iconBg="bg-blue-50"
           changeType="up"
@@ -201,7 +207,7 @@ export default function InspectionPage() {
         <StatsCard
           title="Failed Inspections"
           value={inspectionOverview ? inspectionOverview.data?.failedInspections.value : 0}
-          change={`${inspectionOverview?inspectionOverview.data?.failedInspections.change : 0} from last month`}
+          change={`${inspectionOverview ? inspectionOverview.data?.failedInspections.change : 0} from last month`}
           icon={<AlertCircle className="w-6 h-6 text-red-600" />}
           iconBg="bg-red-50"
           changeType={inspectionOverview && inspectionOverview.data?.failedInspections.direction === 'up' ? 'up' : 'down'}
@@ -217,7 +223,7 @@ export default function InspectionPage() {
         <StatsCard
           title="Pass Rate"
           value={inspectionOverview ? `${inspectionOverview.data?.passRate.value}%` : '0%'}
-          change={`+${inspectionOverview? inspectionOverview.data?.passRate.change : 0}% from last month`}
+          change={`+${inspectionOverview ? inspectionOverview.data?.passRate.change : 0}% from last month`}
           icon={<CheckCircle className="w-6 h-6 text-green-600" />}
           iconBg="bg-green-50"
           changeType="up"
@@ -381,13 +387,12 @@ export default function InspectionPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        record.status === 'passed'
+                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${record.status === 'passed'
                           ? 'bg-green-100 text-green-800'
                           : record.status === 'failed'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
                     >
                       {record.status === 'passed' ? '✓ Passed' : record.status === 'failed' ? '✗ Failed' : '○ Pending'}
                     </span>

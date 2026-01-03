@@ -15,7 +15,6 @@ export function SKUInventoryTable() {
     const { isLoading, error, data: inventory } = useSKUInventoryQuery();
     const [showReceive, setShowReceive] = useState(false);
     const [showIssue, setShowIssue] = useState(false);
-    const [showAddModal, setShowAddModal] = useState(false);
 
     const columns: ColumnDef<SKUInventoryOverview>[] = [
         {
@@ -84,7 +83,6 @@ export function SKUInventoryTable() {
                 columns={columns}
                 data={inventory || []}
                 title={"Inventory by SKU"}
-                onAdd={() => setShowAddModal(true)}
             />
 
             {showReceive && (
@@ -98,13 +96,6 @@ export function SKUInventoryTable() {
                 <IssueTiresModal
                     onCancel={() => setShowIssue(false)}
                     onSuccess={() => setShowIssue(false)}
-                />
-            )}
-
-            {showAddModal && (
-                <ReceiveStockModal
-                    onCancel={() => setShowAddModal(false)}
-                    onSuccess={() => setShowAddModal(false)}
                 />
             )}
         </>

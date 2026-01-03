@@ -27,6 +27,7 @@ import {
     ArrowDownLeft,
     X,
     Info,
+    Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,9 +69,24 @@ export default function StockTransfersPage() {
 
     // Global Header Integration
     useEffect(() => {
+        const handleExport = () => {
+            // Export functionality - could export to CSV, Excel, etc.
+            alert("Exporting transfer history...\nFormat: CSV\nRecords: " + mockTransferHistory.length);
+            // In a real implementation, this would generate and download a file
+        };
+
         setHeader({
             title: 'Stock Transfers',
             subtitle: 'Orchestrate inventory movements across internal and external nodes',
+            actions: (
+                <button
+                    onClick={handleExport}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm"
+                >
+                    <Download size={20} />
+                    Export
+                </button>
+            ),
         });
         return () => setHeader({});
     }, [setHeader]);
@@ -122,22 +138,20 @@ export default function StockTransfersPage() {
                         <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
                             <button
                                 onClick={() => setActiveTab('new')}
-                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                                    activeTab === 'new' 
-                                        ? 'bg-teal-600 text-white shadow-sm' 
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
+                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${activeTab === 'new'
+                                    ? 'bg-teal-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
                             >
                                 <Plus className="w-4 h-4" />
                                 New Transfer
                             </button>
                             <button
                                 onClick={() => setActiveTab('history')}
-                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                                    activeTab === 'history' 
-                                        ? 'bg-teal-600 text-white shadow-sm' 
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
+                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${activeTab === 'history'
+                                    ? 'bg-teal-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
                             >
                                 <History className="w-4 h-4" />
                                 History
@@ -183,11 +197,10 @@ export default function StockTransfersPage() {
                                                     <button
                                                         key={type.id}
                                                         onClick={() => setTransferType(type.id as TransferType)}
-                                                        className={`p-4 rounded-lg border-2 transition-all text-left ${
-                                                            isSelected
-                                                                ? 'border-teal-500 bg-teal-50 shadow-sm'
-                                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
+                                                        className={`p-4 rounded-lg border-2 transition-all text-left ${isSelected
+                                                            ? 'border-teal-500 bg-teal-50 shadow-sm'
+                                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                            }`}
                                                     >
                                                         <div className="flex items-start gap-3">
                                                             <div className={`w-10 h-10 rounded-lg ${type.color} text-white flex items-center justify-center flex-shrink-0`}>
@@ -212,9 +225,8 @@ export default function StockTransfersPage() {
                                     {/* Step 2: Locations */}
                                     <Card className="p-6 border-gray-200 shadow-sm">
                                         <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                                                fromLocationId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${fromLocationId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                                }`}>
                                                 2
                                             </div>
                                             <div>
@@ -226,8 +238,8 @@ export default function StockTransfersPage() {
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
                                                     <label className="text-sm font-medium text-gray-700">From Location</label>
-                                                    <button 
-                                                        onClick={() => setShowManageLocations(true)} 
+                                                    <button
+                                                        onClick={() => setShowManageLocations(true)}
                                                         className="text-xs text-teal-600 hover:text-teal-700 font-medium"
                                                     >
                                                         Manage Locations
@@ -259,8 +271,8 @@ export default function StockTransfersPage() {
                                                         {transferType.includes('Dealer') ? 'To Dealer' : 'To Location'}
                                                     </label>
                                                     {transferType.includes('Dealer') && (
-                                                        <button 
-                                                            onClick={() => setShowManageDealers(true)} 
+                                                        <button
+                                                            onClick={() => setShowManageDealers(true)}
                                                             className="text-xs text-teal-600 hover:text-teal-700 font-medium"
                                                         >
                                                             Manage Dealers
@@ -301,9 +313,8 @@ export default function StockTransfersPage() {
                                     {/* Step 3: SKU Selection */}
                                     <Card className="p-6 border-gray-200 shadow-sm">
                                         <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                                                selectedSkuId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${selectedSkuId ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                                }`}>
                                                 3
                                             </div>
                                             <div>
@@ -352,9 +363,8 @@ export default function StockTransfersPage() {
                                     {/* Step 4: Quantity & Notes */}
                                     <Card className="p-6 border-gray-200 shadow-sm">
                                         <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                                                quantity > 0 && quantity <= currentLocStock ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${quantity > 0 && quantity <= currentLocStock ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+                                                }`}>
                                                 4
                                             </div>
                                             <div>
@@ -455,7 +465,7 @@ export default function StockTransfersPage() {
                                                                     B
                                                                 </div>
                                                                 <span className="text-sm font-medium text-gray-700 flex-1">
-                                                                    {transferType.includes('Dealer') 
+                                                                    {transferType.includes('Dealer')
                                                                         ? (selectedDealer?.name || 'Not selected')
                                                                         : (toLocation?.name || 'Not selected')
                                                                     }
@@ -536,7 +546,7 @@ export default function StockTransfersPage() {
                                         <Card className="p-6 border-gray-200 shadow-sm">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h4 className="font-semibold text-gray-900">Recent Transfers</h4>
-                                                <button 
+                                                <button
                                                     onClick={() => setActiveTab('history')}
                                                     className="text-xs text-teal-600 hover:text-teal-700 font-medium"
                                                 >
@@ -558,15 +568,14 @@ export default function StockTransfersPage() {
                                                                             {transfer.quantity} units • {transfer.type}
                                                                         </p>
                                                                     </div>
-                                                                    <Badge 
+                                                                    <Badge
                                                                         variant="outline"
-                                                                        className={`text-xs ${
-                                                                            transfer.status === 'completed' 
-                                                                                ? 'bg-green-50 text-green-700 border-green-200' 
-                                                                                : transfer.status === 'pending'
+                                                                        className={`text-xs ${transfer.status === 'completed'
+                                                                            ? 'bg-green-50 text-green-700 border-green-200'
+                                                                            : transfer.status === 'pending'
                                                                                 ? 'bg-orange-50 text-orange-700 border-orange-200'
                                                                                 : 'bg-red-50 text-red-700 border-red-200'
-                                                                        }`}
+                                                                            }`}
                                                                     >
                                                                         {transfer.status}
                                                                     </Badge>
@@ -617,59 +626,61 @@ export default function StockTransfersPage() {
                 </div>
 
                 {/* Sticky Footer - Only for 'new' tab */}
-                {activeTab === 'new' && (
-                    <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-6 py-4 flex flex-wrap gap-4 justify-between items-center shadow-lg">
-                        <div className="flex items-center gap-6">
-                            <div className="flex flex-col">
-                                <span className="text-xs text-gray-500 font-medium">Status</span>
-                                <span className="text-sm font-semibold text-gray-900">
-                                    {isFormValid ? 'Ready to transfer' : 'Complete all steps'}
-                                </span>
-                            </div>
-                            <div className="hidden sm:flex items-center gap-2">
-                                {[1, 2, 3, 4].map((step) => {
-                                    const isComplete = 
-                                        (step === 1) ||
-                                        (step === 2 && fromLocationId && (toLocationId || selectedDealerId)) ||
-                                        (step === 3 && selectedSkuId) ||
-                                        (step === 4 && quantity > 0 && quantity <= currentLocStock);
-                                    return (
-                                        <div
-                                            key={step}
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                                                isComplete
+                {
+                    activeTab === 'new' && (
+                        <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-6 py-4 flex flex-wrap gap-4 justify-between items-center shadow-lg">
+                            <div className="flex items-center gap-6">
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-gray-500 font-medium">Status</span>
+                                    <span className="text-sm font-semibold text-gray-900">
+                                        {isFormValid ? 'Ready to transfer' : 'Complete all steps'}
+                                    </span>
+                                </div>
+                                <div className="hidden sm:flex items-center gap-2">
+                                    {[1, 2, 3, 4].map((step) => {
+                                        const isComplete =
+                                            (step === 1) ||
+                                            (step === 2 && fromLocationId && (toLocationId || selectedDealerId)) ||
+                                            (step === 3 && selectedSkuId) ||
+                                            (step === 4 && quantity > 0 && quantity <= currentLocStock);
+                                        return (
+                                            <div
+                                                key={step}
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isComplete
                                                     ? 'bg-teal-600 text-white shadow-sm'
                                                     : 'bg-gray-200 text-gray-400'
-                                            }`}
-                                        >
-                                            {step}
-                                        </div>
-                                    );
-                                })}
+                                                    }`}
+                                            >
+                                                {step}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={handleReset}
+                                    className="px-6"
+                                >
+                                    Reset
+                                </Button>
+                                <Button
+                                    disabled={!isFormValid}
+                                    onClick={handleConfirm}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white px-8 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Execute Transfer
+                                </Button>
                             </div>
                         </div>
-                        <div className="flex gap-3">
-                            <Button 
-                                variant="outline" 
-                                onClick={handleReset}
-                                className="px-6"
-                            >
-                                Reset
-                            </Button>
-                            <Button
-                                disabled={!isFormValid}
-                                onClick={handleConfirm}
-                                className="bg-teal-600 hover:bg-teal-700 text-white px-8 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Execute Transfer
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
 
-            {showManageLocations && <ManageLocationsDrawer onClose={() => setShowManageLocations(false)} />}
+            {showManageLocations && <ManageLocationsDrawer onClose={() => setShowManageLocations(false)} />
+            }
             {showManageDealers && <ManageDealersDrawer onClose={() => setShowManageDealers(false)} />}
-        </div>
+        </div >
     );
 }

@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SKUInventoryTable } from "@/components/sku-inventory-table";
 import { StatCard } from "@/components/ui/stat-card";
 import { useHeader } from '@/components/HeaderContext';
 import { useSKUInventoryQuery } from "./query";
-import { Layers, CheckCircle2, AlertTriangle, ShieldCheck, Box } from "lucide-react";
+import { Layers, CheckCircle2, AlertTriangle, ShieldCheck, Box, Plus } from "lucide-react";
+import ReceiveStockModal from "@/components/receive-stock-modal";
 
 export default function SKUInventoryPage() {
     const { data: inventory } = useSKUInventoryQuery();
     const { setHeader } = useHeader();
+    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
 
     const totalSKUs = inventory?.length || 0;
     const totalTires = inventory?.reduce((acc, curr) => acc + curr.totalQty, 0) || 0;
@@ -21,6 +23,15 @@ export default function SKUInventoryPage() {
             title: 'Inventory by SKU',
             subtitle: 'Day-to-day tire operations and stock levels',
             searchPlaceholder: 'Search SKUs, model...',
+            actions: (
+                <button
+                    onClick={() => setIsReceiveModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm"
+                >
+                    <Plus className="w-4 h-4" />
+                    Add Stock
+                </button>
+            )
         });
         return () => setHeader({});
     }, [setHeader]);
@@ -58,6 +69,13 @@ export default function SKUInventoryPage() {
             <div className="bg-white text-black rounded-lg shadow-md p-6 space-y-6">
                 <SKUInventoryTable />
             </div>
+
+            {isReceiveModalOpen && (
+                <ReceiveStockModal
+                    onCancel={() => setIsReceiveModalOpen(false)}
+                    onSuccess={() => setIsReceiveModalOpen(false)}
+                />
+            )}
         </div>
     );
 }

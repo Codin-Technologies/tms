@@ -47,6 +47,40 @@
   .scrollbar-visible:hover::-webkit-scrollbar-thumb {
     background: rgba(2, 132, 199, 0.45);
   }
+
+  /* Sidebar scrollbar: invisible by default, visible on hover */
+  .sidebar-scrollbar {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: transparent rgb(17 94 89); /* teal-800 background */
+  }
+
+  .sidebar-scrollbar:hover {
+    scrollbar-color: rgb(204 251 241) rgb(17 94 89); /* teal-100 thumb, teal-800 track */
+  }
+
+  /* WebKit browsers (Chrome, Safari, Edge) */
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: rgb(17 94 89); /* teal-800 - same as sidebar */
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent; /* invisible by default */
+    border-radius: 4px;
+  }
+
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgb(204 251 241); /* teal-100 - same as sidebar items */
+    border-radius: 4px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(153 246 228); /* teal-200 - slightly darker on thumb hover */
+  }
 }
 
 /* Apply Inter font globally */
