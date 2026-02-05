@@ -1,6 +1,6 @@
 'use client';
 
-import { useSKUsQuery } from "@/app/(pages)/stock/skus/query";
+import { useSKUsQuery } from "@/app/(pages)/inventory/query";
 import { StockTransfer } from "@/types/inventory";
 import { SKU } from "@/types/sku";
 import {

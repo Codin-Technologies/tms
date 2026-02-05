@@ -93,21 +93,28 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center py-4 gap-2 w-full">
-        <div className="flex justify-between w-full items-center gap-2">
-          {title && <h2 className="text-3xl font-bold">{title}</h2>}
+      <div className="flex items-center justify-between py-4 gap-4">
+        {title && <h2 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h2>}
 
-
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1 max-w-md ml-auto">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search..."
+              placeholder="Search registry..."
               value={globalFilter}
               onChange={(event) => setGlobalFilter(event.target.value)}
-              className="max-w-sm"
+              className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all shadow-sm"
             />
-            {onAdd && <Button onClick={onAdd} className="border-2 border-rounded bg-transparent p-1.5 hover:bg-black/20"><PlusIcon stroke="black" /></Button>}
           </div>
-
+          {onAdd && (
+            <Button
+              onClick={onAdd}
+              className="bg-teal-600 hover:bg-teal-700 h-10 px-4 gap-2 shadow-md shrink-0"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Entry</span>
+            </Button>
+          )}
         </div>
       </div>
       <div className="rounded-md border">
@@ -117,7 +124,7 @@ export function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-bold">
+                    <TableHead key={header.id} className="text-gray-900 font-bold uppercase text-[10px] tracking-widest bg-gray-50/50 h-10">
                       {header.isPlaceholder ? null : (
                         <div
                           {...{
@@ -132,7 +139,7 @@ export function DataTable<TData, TValue>({
                             header.getContext()
                           )}
                           {header.column.getCanSort() && (
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
+                            <ArrowUpDown className="ml-2 h-3.5 w-3.5 text-gray-400" />
                           )}
                         </div>
                       )}
@@ -152,7 +159,7 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="text-semibold text-black/70"
+                      className="text-gray-700 py-4"
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -175,45 +182,36 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between space-x-2 py-4 font-bold">
+      <div className="flex items-center justify-between space-x-2 py-4">
         <div className="flex items-center space-x-2">
-          {/* <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button> */}
           <Button
-            className="h-8 w-8 p-0"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 bg-white border-gray-200"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-bold">Page</span>
-            <span className="text-sm font-bold">
-              {table.getState().pagination.pageIndex + 1} of{" "}
+          <div className="flex items-center gap-1.5 px-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Page</span>
+            <span className="text-sm font-black text-gray-900">
+              {table.getState().pagination.pageIndex + 1}
+            </span>
+            <span className="text-xs font-bold text-gray-400">/</span>
+            <span className="text-sm font-bold text-gray-500">
               {table.getPageCount()}
             </span>
           </div>
           <Button
-            className="h-8 w-8 p-0"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 bg-white border-gray-200"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          {/* <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button> */}
         </div>
         <Select
           value={pageSize.toString()}
@@ -222,13 +220,13 @@ export function DataTable<TData, TValue>({
             table.setPageSize(Number(value));
           }}
         >
-          <SelectTrigger className="outline-none focus:ring-0">
-            <SelectValue placeholder="Select page size" />
+          <SelectTrigger className="w-[180px] h-9 bg-white border-gray-200 text-xs font-bold uppercase tracking-wider focus:ring-1 focus:ring-teal-500">
+            <SelectValue placeholder="Entries" />
           </SelectTrigger>
           <SelectContent>
             {[10, 20, 30, 40, 50].map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                {size} entries per page
+              <SelectItem key={size} value={size.toString()} className="text-xs font-bold uppercase tracking-widest">
+                {size} entries
               </SelectItem>
             ))}
           </SelectContent>

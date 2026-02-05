@@ -9,7 +9,11 @@ interface RequireRoleProps {
 }
 
 export default function RequireRole({ allowedRoles, currentRole = 'ADMIN', children }: RequireRoleProps) {
-  // NOTE: Replace currentRole default with real session role when wiring up auth
-  if (!allowedRoles.includes(currentRole)) return null;
+  // Case-insensitive comparison for robustness
+  const isAllowed = allowedRoles.some(role =>
+    role.toUpperCase() === (currentRole?.toUpperCase() || '')
+  );
+
+  if (!isAllowed) return null;
   return <>{children}</>;
 }

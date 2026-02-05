@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { sidebarItems } from "./sidebarItems";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function SidebarNav() {
@@ -16,9 +16,23 @@ export default function SidebarNav() {
 
   const profileActive = pathname?.startsWith('/users');
 
+  /* 
+   * Client-side logout handler 
+   * Replaces server-side 'signOut' which requires request context headers
+   */
+  const router = useRouter(); // Requires import from next/navigation
   const handleLogout = async () => {
-    const { signOut } = await import('@/app/auth');
-    await signOut({ redirectTo: '/login' });
+    // 1. Clear local storage tokens
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('api_token');
+      localStorage.removeItem('user_data');
+    }
+
+    // 2. (Optional) Call backend logout endpoint
+    // try { await api.post('/api/logout'); } catch(e) { console.error('Logout API failed', e); }
+
+    // 3. Redirect to login
+    router.push('/login');
   };
 
   return (

@@ -28,13 +28,8 @@ export const sidebarItems: {
             icon: Home,
         },
         {
-            name: "SKU Catalog",
-            href: "/stock/skus",
-            icon: Database,
-        },
-        {
-            name: "Inventory by SKU",
-            href: "/stock/inventory",
+            name: "Inventory",
+            href: "/inventory",
             icon: Box,
         },
         {

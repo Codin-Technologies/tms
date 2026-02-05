@@ -23,6 +23,7 @@ export interface SKU {
     budgetCategory?: string | null;
 
     status: string;
+    currentStock?: number; // Added from API integration
     isSafetyCritical?: boolean;
     createdAt?: Date | null;
     updatedAt?: Date | null;

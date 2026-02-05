@@ -30,4 +30,15 @@ const CardFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement
   <div className={cn("flex items-center p-6 pt-0", className)} {...props} />
 );
 
-export { Card, CardHeader, CardContent, CardFooter };
+const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h3
+      ref={ref}
+      className={cn("font-semibold leading-none tracking-tight", className)}
+      {...props}
+    />
+  )
+)
+CardTitle.displayName = "CardTitle"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardContent };

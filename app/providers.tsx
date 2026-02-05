@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ReactNode } from "react";
 import { Toaster } from "sonner";
+import TokenSync from "@/components/auth/TokenSync";
 
 const Providers = ({ children }: { children: ReactNode }) => {
   const queryClient = new QueryClient({
@@ -15,6 +16,7 @@ const Providers = ({ children }: { children: ReactNode }) => {
   });
   return (
     <SessionProvider>
+      <TokenSync />
       <QueryClientProvider client={queryClient}>
         {children}
         <Toaster position="top-right" richColors />

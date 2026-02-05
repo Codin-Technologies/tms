@@ -23,21 +23,36 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
+      // Try NextAuth first
       const result = await signIn("credentials", {
         redirect: false,
         username: data.email,
         password: data.password,
       })
       console.log("Login result:", result);
-      if (result?.error) {
-        setError("root", {
-          type: "manual",
-          message: result.code,
-        });
-      }
 
       if (result?.ok && !result?.error) {
         router.push('/')
+        return;
+      }
+
+      // If NextAuth fails, try direct API authentication
+      if (result?.error) {
+        console.log("NextAuth failed, trying direct API login...");
+        try {
+          const { login } = await import('@/lib/auth');
+          const apiResult = await login({ email: data.email, password: data.password });
+          console.log("Direct API login successful:", apiResult);
+          alert(`Welcome ${apiResult.user.name}! Logged in successfully.`);
+          router.push('/');
+          return;
+        } catch (apiError: any) {
+          console.error("Direct API login also failed:", apiError);
+          setError("root", {
+            type: "manual",
+            message: apiError.response?.data?.message || result.error || "Login failed",
+          });
+        }
       }
     } catch (error) {
       setError("root", {
@@ -109,11 +124,10 @@ export default function LoginPage() {
                   })}
                   type="text"
                   id="email"
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#004953] focus:border-transparent transition-colors ${
-                    errors.email
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#004953] focus:border-transparent transition-colors ${errors.email
                       ? "border-red-300 focus:ring-red-500"
                       : "border-gray-300"
-                  }`}
+                    }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -169,11 +183,10 @@ export default function LoginPage() {
                   })}
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  className={`block w-full pl-10 pr-12 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#004953] focus:border-transparent transition-colors ${
-                    errors.password
+                  className={`block w-full pl-10 pr-12 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#004953] focus:border-transparent transition-colors ${errors.password
                       ? "border-red-300 focus:ring-red-500"
                       : "border-gray-300"
-                  }`}
+                    }`}
                   placeholder="Enter your password"
                 />
                 <button

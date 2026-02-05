@@ -46,6 +46,7 @@ import {
     Save,
     Download,
     TrendingUp,
+    Trash2,
 } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { Badge } from "@/components/ui/badge";
@@ -58,8 +59,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Dialog } from '@headlessui/react';
-import { useSKUsQuery } from '@/app/(pages)/stock/skus/query';
 import { AxleType } from '@/components/fleet/AxleRow';
+import {
+    fetchVehicleById,
+    updateVehicle,
+    fetchAxleConfiguration,
+    saveAxleConfiguration,
+    fetchVehicleTimeline,
+    fetchVehicleInspections,
+    archiveVehicle,
+    retireVehicle
+} from '@/actions/vehicle';
+import { useSKUsQuery } from '@/app/(pages)/inventory/query';
+import Loading from '../../../loading';
+import AppError from '../../../error';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Fragment } from 'react';
 
 // ============================================================================
@@ -133,7 +147,8 @@ const axleSchema = z.object({
 // Validation Schema for Vehicle Details
 const vehicleDetailsSchema = z.object({
     fleetNumber: z.string().min(1, 'Vehicle ID is required'),
-    registrationNumber: z.string().optional(),
+    registrationNumber: z.string().min(1, 'Registration / License Plate is required'),
+    vin: z.string().optional(),
     vehicleType: z.string().min(1, 'Vehicle Type is required'),
     make: z.string().min(1, 'Make is required'),
     model: z.string().min(1, 'Model is required'),
@@ -193,7 +208,7 @@ const tabs = [
     { id: 'Axle & Wheel Configurations', label: 'Axles & Wheels', icon: Activity },
     { id: 'Tire Management', label: 'Tire Management', icon: Truck },
     { id: 'Sensor Data Snapshots', label: 'Sensor Data', icon: Gauge },
-    { id: 'Service History', label: 'Service History', icon: History },
+    { id: 'Service History', label: 'Service & Timeline', icon: History },
     { id: 'Inspection History', label: 'Inspection History', icon: ClipboardList },
     { id: 'Work Orders', label: 'Work Orders', icon: FileText },
 ];
@@ -830,59 +845,214 @@ export default function VehicleDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { setHeader } = useHeader();
+    const queryClient = useQueryClient();
     const vehicleId = params.id as string;
     const [activeTab, setActiveTab] = useState('Overview');
     const [isEditing, setIsEditing] = useState(false);
 
-    const initialVehicleData = useMemo(() => mockVehicleData[vehicleId] || {
-        id: vehicleId,
-        fleetNumber: vehicleId,
-        registrationNumber: 'N/A',
-        vehicleType: 'N/A',
-        name: 'N/A',
-        description: 'Vehicle Description',
-        make: 'N/A',
-        model: 'Unknown Vehicle',
-        year: 'N/A',
-        hours: 'N/A',
-        status: 'Active',
-        location: 'Atlanta',
-        assignment: 'Unassigned',
-        group: 'N/A',
-        operator: 'Unassigned',
-        odometer: '85 hr',
-    }, [vehicleId]);
+    const { data: vehicleDataResponse, isLoading: isVehicleLoading, error: vehicleError, refetch } = useQuery({
+        queryKey: ['vehicle', vehicleId],
+        queryFn: async () => {
+            const result = await fetchVehicleById(vehicleId);
+            if (!result.success) throw new Error(result.message);
+            return result.data;
+        }
+    });
 
-    // Ensure name defaults to registrationNumber if available
-    const processedInitialData = useMemo(() => {
-        const raw = mockVehicleData[vehicleId] || initialVehicleData;
-        return {
-            ...raw,
-            name: raw.name === 'N/A' || !raw.name ? (raw.registrationNumber !== 'N/A' ? raw.registrationNumber : raw.id) : raw.name
+    const updateMutation = useMutation({
+        mutationFn: (data: VehicleDetailsFormValues) => updateVehicle(vehicleId, data),
+        onSuccess: (result) => {
+            if (result.success) {
+                toast.success('Vehicle details updated successfully');
+                setIsEditing(false);
+                queryClient.invalidateQueries({ queryKey: ['vehicle', vehicleId] });
+                queryClient.invalidateQueries({ queryKey: ['operations-vehicles'] });
+            } else {
+                toast.error(result.message || 'Failed to update vehicle');
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'An error occurred while updating vehicle');
+        }
+    });
+
+    const axleConfigMutation = useMutation({
+        mutationFn: (data: any) => saveAxleConfiguration(vehicleId, data),
+        onSuccess: (result) => {
+            if (result.success) {
+                toast.success('Axle configuration saved successfully');
+                queryClient.invalidateQueries({ queryKey: ['vehicle', vehicleId] });
+                queryClient.invalidateQueries({ queryKey: ['axle-config', vehicleId] });
+            } else {
+                toast.error(result.message || 'Failed to save axle configuration');
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'An error occurred while saving axle configuration');
+        }
+    });
+
+    const { data: axleConfigResponse, isLoading: isAxleConfigLoading } = useQuery({
+        queryKey: ['axle-config', vehicleId],
+        queryFn: async () => {
+            const result = await fetchAxleConfiguration(vehicleId);
+            if (!result.success) throw new Error(result.message);
+            return result.data;
+        }
+    });
+
+    const { data: timelineResponse, isLoading: isTimelineLoading } = useQuery({
+        queryKey: ['vehicle-timeline', vehicleId],
+        queryFn: async () => {
+            const result = await fetchVehicleTimeline(vehicleId);
+            if (!result.success) throw new Error(result.message);
+            return result.data;
+        }
+    });
+
+    const { data: inspectionsResponse, isLoading: isInspectionsLoading } = useQuery({
+        queryKey: ['vehicle-inspections', vehicleId],
+        queryFn: async () => {
+            const result = await fetchVehicleInspections(vehicleId);
+            if (!result.success) throw new Error(result.message);
+            return result.data;
+        }
+    });
+
+    const archiveMutation = useMutation({
+        mutationFn: () => archiveVehicle(vehicleId),
+        onSuccess: (result) => {
+            if (result.success) {
+                toast.success('Vehicle archived successfully');
+                router.push('/operations');
+            } else {
+                toast.error(result.message || 'Failed to archive vehicle');
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'An error occurred while archiving vehicle');
+        }
+    });
+
+    const retireMutation = useMutation({
+        mutationFn: () => retireVehicle(vehicleId),
+        onSuccess: (result) => {
+            if (result.success) {
+                toast.success('Vehicle retired successfully');
+                refetch();
+            } else {
+                toast.error(result.message || 'Failed to retire vehicle');
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'An error occurred while retiring vehicle');
+        }
+    });
+
+    const handleSaveAxleConfiguration = () => {
+        // Transform axles into positions as per Swagger documentation
+        const positionsPayload = axles.flatMap(axle => {
+            const positions = [];
+
+            // Helper to map frontend axle types to backend tire requirements
+            const getTireType = (pos: string) => {
+                const upper = pos.toUpperCase();
+                if (upper === 'DRIVE') return 'TRACTION';
+                return upper;
+            };
+
+            // Left Side
+            positions.push({
+                position_code: `A${axle.number}-L`,
+                axle_number: axle.number,
+                side: 'L',
+                tire_type_requirement: getTireType(axle.position)
+            });
+
+            // Right Side
+            positions.push({
+                position_code: `A${axle.number}-R`,
+                axle_number: axle.number,
+                side: 'R',
+                tire_type_requirement: getTireType(axle.position)
+            });
+
+            // If Dual configuration, add Inner/Outer distinction?
+            // The swagger snippet was simple, so assuming just L/R slots for now
+            // or maybe the backend handles duals based on vehicle type?
+            // Sending basic positions first.
+
+            return positions;
+        });
+
+        const payload = {
+            positions: positionsPayload
         };
-    }, [vehicleId, initialVehicleData]);
 
-    const [vehicle, setVehicle] = useState(processedInitialData);
+        console.log("Saving Axle Configuration Payload (Swagger):", payload);
+        axleConfigMutation.mutate(payload as any);
+    };
 
-    useEffect(() => {
-        setVehicle(processedInitialData);
-    }, [processedInitialData]);
+    const vehicle = useMemo(() => {
+        if (!vehicleDataResponse) return {
+            id: vehicleId,
+            fleetNumber: vehicleId,
+            registrationNumber: 'N/A',
+            vin: 'N/A',
+            vehicleType: 'N/A',
+            name: 'N/A',
+            description: 'Vehicle Description',
+            make: 'N/A',
+            model: 'Unknown Vehicle',
+            year: 'N/A',
+            hours: 'N/A',
+            status: 'Active',
+            location: 'Atlanta',
+            assignment: 'Unassigned',
+            group: 'N/A',
+            operator: 'Unassigned',
+            odometer: '0',
+        };
+
+        const v = vehicleDataResponse.data || vehicleDataResponse;
+        return {
+            ...v,
+            fleetNumber: v.fleet_number || v.vehicle_id || v.id,
+            registrationNumber: v.plate_number || v.registration_number || 'N/A',
+            vin: v.vin || 'N/A',
+            vehicleType: v.category || v.vehicle_type || 'N/A',
+            odometer: v.current_mileage?.toString() || v.odometer || '0',
+            name: v.plate_number || v.registration_number || v.vehicle_id || v.id
+        };
+    }, [vehicleDataResponse, vehicleId]);
+
     const { data: skus } = useSKUsQuery();
 
     // Configuration State
-    const [axles, setAxles] = useState<Axle[]>(() => {
-        if (vehicle.axleConfiguration?.axles) {
-            return vehicle.axleConfiguration.axles.map((a: any, idx: number) => ({
+    const [axles, setAxles] = useState<Axle[]>([]);
+
+    useEffect(() => {
+        const config = axleConfigResponse?.data || axleConfigResponse;
+        if (config?.axles) {
+            setAxles(config.axles.map((a: any, idx: number) => ({
+                id: a.id || `axle-${idx}`,
+                number: a.axle_number || a.axleNumber || idx + 1,
+                position: (a.axle_type || a.axleType || 'Drive').charAt(0).toUpperCase() + (a.axle_type || a.axleType || 'Drive').slice(1).toLowerCase() as AxlePosition,
+                tireConfig: (a.tires_per_side || a.tiresPerSide) === 1 ? 'Single' : 'Dual',
+                liftAxle: (a.axle_type || a.axleType) === 'LIFT',
+                tolerance: a.tolerance || 0,
+            })));
+        } else if (vehicle.axleConfiguration?.axles) {
+            setAxles(vehicle.axleConfiguration.axles.map((a: any, idx: number) => ({
                 id: `axle-${idx}`,
                 number: a.axleNumber,
                 position: (a.axleType.charAt(0) + a.axleType.slice(1).toLowerCase()) as AxlePosition,
                 tireConfig: a.tiresPerSide === 1 ? 'Single' : 'Dual',
                 liftAxle: a.axleType === 'LIFT',
                 tolerance: 0,
-            }));
+            })));
         }
-        return [];
-    });
+    }, [axleConfigResponse, vehicle.axleConfiguration]);
 
     const [positions, setPositions] = useState<Position[]>([]);
     const [showAddAxle, setShowAddAxle] = useState(false);
@@ -1006,7 +1176,8 @@ export default function VehicleDetailPage() {
             number: axles.length + 1,
             ...axleData,
         };
-        setAxles([...axles, newAxle]);
+        const updatedAxles = [...axles, newAxle];
+        setAxles(updatedAxles);
         setShowAddAxle(false);
         setEditingAxle(null);
         toast.success('Axle added successfully');
@@ -1101,7 +1272,16 @@ export default function VehicleDetailPage() {
             newStatuses[posId] = 'ASSIGNED';
         });
 
-        setVehicle((prev: any) => ({ ...prev, tireStatuses: newStatuses }));
+        queryClient.setQueryData(['vehicle', vehicleId], (old: any) => {
+            if (!old) return old;
+            return {
+                ...old,
+                data: {
+                    ...old.data,
+                    tireStatuses: newStatuses
+                }
+            };
+        });
         setActivityLogs(prev => [...newLogs, ...prev]);
         setIsIssuingMode(false);
         setPendingIssuance({});
@@ -1150,7 +1330,16 @@ export default function VehicleDetailPage() {
             }
         });
 
-        setVehicle((prev: any) => ({ ...prev, tireStatuses: newStatuses }));
+        queryClient.setQueryData(['vehicle', vehicleId], (old: any) => {
+            if (!old) return old;
+            return {
+                ...old,
+                data: {
+                    ...old.data,
+                    tireStatuses: newStatuses
+                }
+            };
+        });
         setActivityLogs(prev => [...newLogs, ...prev]);
         setIsRotationMode(false);
         setPendingRotations({});
@@ -1162,15 +1351,22 @@ export default function VehicleDetailPage() {
         const log = activityLogs.find(l => l.id === logId);
         if (!log || log.type !== 'rotation') return;
 
-        setVehicle((prev: any) => {
-            const nextStatuses = { ...prev.tireStatuses };
+        queryClient.setQueryData(['vehicle', vehicleId], (old: any) => {
+            if (!old) return old;
+            const nextStatuses = { ...(old.data.tireStatuses || {}) };
             const currentSource = nextStatuses[log.sourcePositionId];
             const currentTarget = nextStatuses[log.targetPositionId];
 
             nextStatuses[log.sourcePositionId] = currentTarget;
             nextStatuses[log.targetPositionId] = currentSource;
 
-            return { ...prev, tireStatuses: nextStatuses };
+            return {
+                ...old,
+                data: {
+                    ...old.data,
+                    tireStatuses: nextStatuses
+                }
+            };
         });
 
         setActivityLogs(prev => prev.filter(l => l.id !== logId));
@@ -1213,11 +1409,12 @@ export default function VehicleDetailPage() {
         toast.info(`Applied rule: ${rule.name}. Review moves in the summary.`);
     };
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<VehicleDetailsFormValues>({
+    const formMethods = useForm<VehicleDetailsFormValues>({
         resolver: zodResolver(vehicleDetailsSchema),
-        defaultValues: {
+        values: {
             fleetNumber: vehicle.fleetNumber,
             registrationNumber: vehicle.registrationNumber,
+            vin: vehicle.vin,
             vehicleType: vehicle.vehicleType,
             make: vehicle.make,
             model: vehicle.model,
@@ -1227,10 +1424,10 @@ export default function VehicleDetailPage() {
         }
     });
 
+    const { register, handleSubmit, reset, formState: { errors } } = formMethods;
+
     const onSave = (data: VehicleDetailsFormValues) => {
-        setVehicle((prev: any) => ({ ...prev, ...data }));
-        setIsEditing(false);
-        toast.success('Vehicle details updated successfully (locally)');
+        updateMutation.mutate(data);
     };
 
     const handleCancel = () => {
@@ -1246,11 +1443,38 @@ export default function VehicleDetailPage() {
                         <span className="text-xl font-black text-gray-900 tracking-tight">Vehicle #{vehicle.fleetNumber || vehicle.id}</span>
                         <Badge variant="outline" className="text-xs font-bold border-green-200 text-green-700 bg-green-50 uppercase tracking-wider px-2 py-0.5">Active</Badge>
                     </div>
-                    <span className="text-xs font-medium text-gray-500">{vehicle.make} {vehicle.model} {vehicle.year} | VIN: {vehicle.registrationNumber || 'N/A'}</span>
+                    <span className="text-xs font-medium text-gray-500">{vehicle.make} {vehicle.model} {vehicle.year} | Reg: {vehicle.registrationNumber || 'N/A'} | VIN: {vehicle.vin || 'N/A'}</span>
                 </div>
             ),
             actions: (
                 <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (confirm('Are you sure you want to retire this vehicle?')) {
+                                retireMutation.mutate();
+                            }
+                        }}
+                        disabled={retireMutation.isPending}
+                        className="font-bold shadow-sm h-9 bg-white border-orange-200 text-orange-700 hover:bg-orange-50"
+                    >
+                        <RefreshCcw className={`w-4 h-4 mr-2 ${retireMutation.isPending ? 'animate-spin' : ''}`} /> Retire
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (confirm('Are you sure you want to archive this vehicle?')) {
+                                archiveMutation.mutate();
+                            }
+                        }}
+                        disabled={archiveMutation.isPending}
+                        className="font-bold shadow-sm h-9 bg-white border-red-200 text-red-700 hover:bg-red-50"
+                    >
+                        <Trash2 className="w-4 h-4 mr-2" /> Archive
+                    </Button>
+                    <div className="w-px h-6 bg-gray-200 mx-1"></div>
                     <Button variant="outline" size="sm" className="font-bold shadow-sm h-9 bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
                         <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
@@ -1359,7 +1583,10 @@ export default function VehicleDetailPage() {
 
                 {/* Tab Content */}
                 <div className="p-8 flex-1">
-                    {activeTab === 'Overview' && (
+                    {isVehicleLoading && <Loading />}
+                    {vehicleError && <AppError error={vehicleError as any} reset={refetch} />}
+
+                    {!isVehicleLoading && !vehicleError && activeTab === 'Overview' && (
                         <div className="flex flex-col gap-6 animate-in slide-in-from-left-2 duration-300">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* Left Column: Vehicle Information (2/3 Width) */}
@@ -1393,7 +1620,7 @@ export default function VehicleDetailPage() {
                                         </div>
 
                                         {isEditing ? (
-                                            <FormProvider {...{ register, handleSubmit, reset, formState: { errors } }}>
+                                            <FormProvider {...formMethods}>
                                                 <form className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                                                     {/* General Details */}
                                                     <div className="space-y-4">
@@ -1453,15 +1680,24 @@ export default function VehicleDetailPage() {
                                                         <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Additional Details</h4>
 
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-medium text-gray-700">VIN / Registration Number</label>
+                                                            <label className="text-xs font-medium text-gray-700">Registration / License Plate *</label>
                                                             <Input
                                                                 {...register('registrationNumber')}
                                                                 className="h-9 text-sm"
-                                                                placeholder="Enter VIN"
+                                                                placeholder="Enter registration or license plate"
                                                             />
                                                             {errors.registrationNumber && (
                                                                 <p className="text-xs text-red-600">{errors.registrationNumber.message}</p>
                                                             )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-gray-700">VIN</label>
+                                                            <Input
+                                                                {...register('vin')}
+                                                                className="h-9 text-sm"
+                                                                placeholder="Enter VIN"
+                                                            />
                                                         </div>
 
                                                         <div className="space-y-2">
@@ -1679,7 +1915,7 @@ export default function VehicleDetailPage() {
                     {activeTab === 'Axle & Wheel Configurations' && (
                         <div className="space-y-8 animate-in slide-in-from-right-2 duration-300">
                             {/* Summary Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex flex-col gap-1 shadow-sm">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-[9px]">Total Axles</span>
                                     <span className="text-xl font-black text-gray-900">{axles.length}</span>
@@ -1692,6 +1928,20 @@ export default function VehicleDetailPage() {
                                     <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest text-[9px]">Status</span>
                                     <span className="text-xl font-black text-teal-700 uppercase tracking-tight">Interactive Mode</span>
                                 </div>
+                                <div className="flex items-center justify-center p-2">
+                                    <Button
+                                        onClick={handleSaveAxleConfiguration}
+                                        disabled={axleConfigMutation.isPending}
+                                        className="w-full h-full rounded-2xl bg-gray-900 hover:bg-black text-white font-bold gap-2 shadow-lg shadow-gray-200 min-h-[64px]"
+                                    >
+                                        {axleConfigMutation.isPending ? (
+                                            <RefreshCcw className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <Save className="w-5 h-5" />
+                                        )}
+                                        {axleConfigMutation.isPending ? 'Saving...' : 'Save Configuration'}
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1703,7 +1953,18 @@ export default function VehicleDetailPage() {
                                             assetTolerance: (vehicle as any).assetTolerance || 0,
                                         }}
                                         axles={axles}
-                                        onUpdateVehicleData={(updates) => setVehicle((prev: any) => ({ ...prev, ...updates }))}
+                                        onUpdateVehicleData={(updates) => {
+                                            queryClient.setQueryData(['vehicle', vehicleId], (old: any) => {
+                                                if (!old) return old;
+                                                return {
+                                                    ...old,
+                                                    data: {
+                                                        ...old.data,
+                                                        ...updates
+                                                    }
+                                                };
+                                            });
+                                        }}
                                         onAddAxle={handleAddAxle}
                                         onUpdateAxle={handleUpdateAxle}
                                         onDeleteAxle={handleDeleteAxle}
@@ -2178,7 +2439,102 @@ export default function VehicleDetailPage() {
                         </div>
                     )}
 
-                    {!['Overview', 'Axle & Wheel Configurations', 'Tire Management'].includes(activeTab) && (
+                    {activeTab === 'Service History' && (
+                        <div className="space-y-6 animate-in slide-in-from-right-2 duration-300">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Operation Timeline</h3>
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">{timelineResponse?.data?.length || 0} Events Recorded</Badge>
+                            </div>
+
+                            {isTimelineLoading ? <Loading /> : (
+                                <div className="relative pl-8 space-y-8 before:absolute before:inset-0 before:left-[11px] before:w-0.5 before:bg-gray-100 before:content-['']">
+                                    {timelineResponse?.data?.map((event: any, idx: number) => (
+                                        <div key={idx} className="relative">
+                                            <div className={`absolute -left-[31px] mt-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm ring-2 ${event.type === 'MAINTENANCE' ? 'ring-blue-500 bg-blue-500' :
+                                                event.type === 'INSPECTION' ? 'ring-teal-500 bg-teal-500' :
+                                                    event.type === 'ALERT' ? 'ring-red-500 bg-red-500' : 'ring-gray-400 bg-gray-400'
+                                                }`} />
+                                            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{new Date(event.timestamp).toLocaleString()}</span>
+                                                    <Badge variant="outline" className="text-[9px] font-bold uppercase">{event.type}</Badge>
+                                                </div>
+                                                <h4 className="text-sm font-bold text-gray-900 mb-1">{event.title || event.activity_name}</h4>
+                                                <p className="text-xs text-gray-500 leading-relaxed">{event.description || event.details}</p>
+                                                <div className="mt-4 flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {event.user_id || 'System'}</span>
+                                                    {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {event.location}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!timelineResponse?.data || timelineResponse.data.length === 0) && (
+                                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                                            <div className="p-6 bg-gray-50 rounded-full mb-6">
+                                                <History className="w-16 h-16 text-gray-200" />
+                                            </div>
+                                            <h4 className="text-lg font-black text-gray-400 uppercase">No Timeline Events</h4>
+                                            <p className="text-gray-300 max-w-sm mt-2 text-xs font-bold uppercase tracking-widest">Operation logs will appear here as they occur</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'Inspection History' && (
+                        <div className="space-y-6 animate-in slide-in-from-right-2 duration-300">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Inspection Logs</h3>
+                                <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-100">{inspectionsResponse?.data?.length || 0} Inspections</Badge>
+                            </div>
+
+                            {isInspectionsLoading ? <Loading /> : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {inspectionsResponse?.data?.map((inspection: any, idx: number) => (
+                                        <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-teal-200 transition-all group">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest">{inspection.inspection_id || `INSP-${idx}`}</span>
+                                                    <span className="text-xs font-bold text-gray-900">{new Date(inspection.created_at || inspection.timestamp).toLocaleDateString()}</span>
+                                                </div>
+                                                <Badge className={
+                                                    inspection.status === 'Pass' || inspection.result === 'PASS' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                                                        inspection.status === 'Fail' || inspection.result === 'FAIL' ? 'bg-red-100 text-red-700 hover:bg-red-100' :
+                                                            'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
+                                                }>
+                                                    {inspection.status || inspection.result || 'Pending'}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
+                                                    <ClipboardList className="w-5 h-5 text-gray-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-gray-700 uppercase tracking-tight">{inspection.type || 'Full Safety Inspection'}</p>
+                                                    <p className="text-[10px] text-gray-500 font-medium">Inspector: {inspection.inspector_name || 'System Auto'}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="outline" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest border-2 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-100 transition-all">
+                                                View Detailed Report
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {(!inspectionsResponse?.data || inspectionsResponse.data.length === 0) && (
+                                        <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                                            <div className="p-6 bg-gray-50 rounded-full mb-6">
+                                                <ClipboardList className="w-16 h-16 text-gray-200" />
+                                            </div>
+                                            <h4 className="text-lg font-black text-gray-400 uppercase">No Inspections Found</h4>
+                                            <p className="text-gray-300 max-w-sm mt-2 text-xs font-bold uppercase tracking-widest">Schedule an inspection to see data here</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {!['Overview', 'Axle & Wheel Configurations', 'Tire Management', 'Service History', 'Inspection History'].includes(activeTab) && (
                         <div className="flex flex-col items-center justify-center py-20 text-center animate-in zoom-in-95 duration-500">
                             <div className="p-6 bg-gray-50 rounded-full mb-6">
                                 {React.createElement(tabs.find(t => t.id === activeTab)?.icon || Info, { className: "w-16 h-16 text-gray-200" })}

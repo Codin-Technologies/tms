@@ -34,14 +34,16 @@
   }
 
   .scrollbar-visible::-webkit-scrollbar-track {
-    background: rgba(148, 163, 184, 0.06); /* gray-300 @ low opacity */
+    background: rgba(148, 163, 184, 0.06);
+    /* gray-300 @ low opacity */
     border-radius: 9999px;
   }
 
   .scrollbar-visible::-webkit-scrollbar-thumb {
-    background: rgba(2, 132, 199, 0.25); /* teal-ish thumb */
+    background: rgba(2, 132, 199, 0.25);
+    /* teal-ish thumb */
     border-radius: 9999px;
-    border: 2px solid rgba(255,255,255,0.0);
+    border: 2px solid rgba(255, 255, 255, 0.0);
   }
 
   .scrollbar-visible:hover::-webkit-scrollbar-thumb {
@@ -52,11 +54,13 @@
   .sidebar-scrollbar {
     /* Firefox */
     scrollbar-width: thin;
-    scrollbar-color: transparent rgb(17 94 89); /* teal-800 background */
+    scrollbar-color: transparent rgb(17 94 89);
+    /* teal-800 background */
   }
 
   .sidebar-scrollbar:hover {
-    scrollbar-color: rgb(204 251 241) rgb(17 94 89); /* teal-100 thumb, teal-800 track */
+    scrollbar-color: rgb(204 251 241) rgb(17 94 89);
+    /* teal-100 thumb, teal-800 track */
   }
 
   /* WebKit browsers (Chrome, Safari, Edge) */
@@ -65,21 +69,25 @@
   }
 
   .sidebar-scrollbar::-webkit-scrollbar-track {
-    background: rgb(17 94 89); /* teal-800 - same as sidebar */
+    background: rgb(17 94 89);
+    /* teal-800 - same as sidebar */
   }
 
   .sidebar-scrollbar::-webkit-scrollbar-thumb {
-    background: transparent; /* invisible by default */
+    background: transparent;
+    /* invisible by default */
     border-radius: 4px;
   }
 
   .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: rgb(204 251 241); /* teal-100 - same as sidebar items */
+    background: rgb(204 251 241);
+    /* teal-100 - same as sidebar items */
     border-radius: 4px;
   }
 
   .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgb(153 246 228); /* teal-200 - slightly darker on thumb hover */
+    background: rgb(153 246 228);
+    /* teal-200 - slightly darker on thumb hover */
   }
 }
 
@@ -89,8 +97,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
 }
-Axle and Wheel Configurator Styles
-.configurator-container {
+
+Axle and Wheel Configurator Styles .configurator-container {
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -143,6 +151,21 @@ Axle and Wheel Configurator Styles
 }
 
 .wheel.driven {
-  background-color: #e44d26; /* Highlight driven wheels */
+  background-color: #e44d26;
+  /* Highlight driven wheels */
   border-color: #e44d26;
+}
+
+@keyframes horizontal-loading {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-horizontal-loading {
+  animation: horizontal-loading 1.5s linear infinite;
 }

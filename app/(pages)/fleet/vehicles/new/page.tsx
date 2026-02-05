@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import { useHeader } from '@/components/HeaderContext';
 import { useRouter } from 'next/navigation';
-import { useSKUsQuery } from '@/app/(pages)/stock/skus/query';
+import { useSKUsQuery } from '@/app/(pages)/inventory/query';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,10 +26,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, Transition } from '@headlessui/react';
 import { VehicleAxleDiagram, VehicleAxleData } from '@/components/fleet/VehicleAxleDiagram';
 import { AxleType } from '@/components/fleet/AxleRow';
+import { createVehicle } from '@/actions/vehicle';
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPE DEFINITIONS (Strict TypeScript Interfaces)
@@ -72,6 +73,8 @@ export interface SKURule {
 
 export interface VehicleConfiguration {
     vehicleId: string;
+    description: string;
+    vin?: string;
     registrationNumber: string;
     vehicleType: VehicleType;
     make: string;
@@ -90,6 +93,8 @@ export interface VehicleConfiguration {
 
 const vehicleDetailsSchema = z.object({
     vehicleId: z.string().min(1, 'Vehicle ID is required'),
+    description: z.string().min(1, 'Asset Description is required'),
+    vin: z.string().optional(),
     registrationNumber: z.string().optional(),
     vehicleType: z.enum(['Truck', 'Bus', 'Trailer']),
     make: z.string().min(1, 'Make is required'),
@@ -117,6 +122,8 @@ export default function AddVehiclePage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [vehicleData, setVehicleData] = useState<Partial<VehicleConfiguration>>({
         vehicleId: '',
+        description: '',
+        vin: '',
         registrationNumber: '',
         vehicleType: 'Truck',
         make: '',
@@ -136,12 +143,50 @@ export default function AddVehiclePage() {
 
 
     useEffect(() => {
+        // Header action replaces the floating button: single source of Proceed/Create
+        const proceedHandler = async () => {
+            if (currentStep < 4) {
+                if (currentStep === 1) {
+                    const form = document.getElementById('vehicle-details-form') as HTMLFormElement;
+                    if (form) {
+                        form.requestSubmit();
+                        return;
+                    }
+                }
+                if (currentStep === 2 && !canProceedToStep3()) {
+                    toast('Please complete axle configuration before proceeding');
+                    return;
+                }
+                if (currentStep === 3 && !canProceedToStep4()) {
+                    toast('Please configure positions before proceeding');
+                    return;
+                }
+                setCurrentStep(currentStep + 1);
+            } else {
+                if (!canActivate()) {
+                    toast('Please complete the configuration before creating the asset');
+                    return;
+                }
+                await handleActivate();
+            }
+        };
+
         setHeader({
             title: 'Add Vehicle & Configure Axles',
             subtitle: 'Define vehicle structure, rules, and operations (IBM MFT Model)',
+            actionLabel: currentStep < 4 ? 'Proceed' : 'Create Asset',
+            actions: (
+                <button
+                    onClick={proceedHandler}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium shadow-sm"
+                >
+                    {currentStep < 4 ? 'Proceed' : 'Create Asset'}
+                </button>
+            ),
         });
+
         return () => setHeader({});
-    }, [setHeader]);
+    }, [setHeader, currentStep, vehicleData, axles, positions]);
 
     // Auto-generate positions when axles change (Step 3)
     useEffect(() => {
@@ -214,7 +259,8 @@ export default function AddVehiclePage() {
     const canProceedToStep2 = () => {
         return vehicleData.vehicleId &&
             vehicleData.make &&
-            vehicleData.model;
+            vehicleData.model &&
+            vehicleData.description;
     };
 
     const canProceedToStep3 = () => {
@@ -282,23 +328,28 @@ export default function AddVehiclePage() {
         ));
     };
 
-    const handleActivate = () => {
-        // Create audit event
-        const auditEvent = {
-            type: 'VEHICLE_CONFIGURATION_ACTIVATED',
-            vehicleId: vehicleData.vehicleId,
-            timestamp: new Date().toISOString(),
-            configuration: {
-                axles: axles.length,
-                positions: positions.length,
-                assetTolerance: vehicleData.assetTolerance,
-            },
-        };
-        console.log('Audit Event:', auditEvent);
+    const handleActivate = async () => {
+        try {
+            const payload = {
+                ...vehicleData,
+                axles: axles.map(a => ({
+                    ...a,
+                    positions: positions.filter(p => p.axleId === a.id)
+                }))
+            };
 
-        // Here you would save to database
-        alert(`Vehicle configuration activated successfully!\n\nAudit: ${auditEvent.type}\nVehicle: ${vehicleData.vehicleId}`);
-        router.push('/operations');
+            const result = await createVehicle(payload);
+
+            if (result.success) {
+                toast.success("Vehicle created and activated successfully");
+                router.push('/operations');
+            } else {
+                toast.error(result.message || "Failed to create vehicle");
+            }
+        } catch (error) {
+            console.error("handleActivate error:", error);
+            toast.error("An error occurred while activating vehicle");
+        }
     };
 
     const steps = [
@@ -309,123 +360,91 @@ export default function AddVehiclePage() {
     ];
 
     return (
-        <div className="mx-auto flex flex-col gap-6 max-w-6xl">
-            {/* Stepper Navigation */}
-            <StepperNavigation
-                steps={steps}
-                currentStep={currentStep}
-                onStepClick={(step) => {
-                    // Only allow going back or to completed steps
-                    if (step <= currentStep || (step === 2 && canProceedToStep2()) || (step === 3 && canProceedToStep3()) || (step === 4 && canProceedToStep4())) {
-                        setCurrentStep(step);
-                    }
-                }}
-            />
+        <div className="w-full bg-white min-h-screen px-2 md:px-4">
+            <div className="w-full">
+                {/* Full-width form */}
+                <div className="flex flex-col gap-6">
+                        {/* Step Content (large left column) - removed top stepper per design */}
+                    <div className="relative">
+                        {/* Progress indicator */}
+                        <div className="mt-8 mb-8">
+                            <div className="flex items-center gap-8">
+                                {["Details", "Axles", "Positions", "Review"].map((label, idx) => {
+                                    const stepNum = idx + 1;
+                                    const isActive = currentStep === stepNum;
+                                    const isComplete = currentStep > stepNum;
+                                    return (
+                                        <div key={label} className="flex items-center gap-4">
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isComplete ? 'bg-teal-600 text-white' : isActive ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-gray-100 text-gray-500'}`}>
+                                                {isComplete ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-sm font-medium">{stepNum}</span>}
+                                            </div>
+                                            <div className={`text-sm ${isComplete ? 'text-teal-700' : isActive ? 'text-teal-700 font-medium' : 'text-gray-500'}`}>{label}</div>
+                                        </div>
+                                    );
+                                })}
 
-            {/* Step Content */}
-            <Card className="p-8 border-gray-200">
-                {currentStep === 1 && (
-                    <Step1VehicleDetails
-                        onSubmit={handleStep1Submit}
-                        vehicleData={vehicleData}
-                        onUpdate={setVehicleData}
-                    />
-                )}
+                                <div className="flex-1 h-2 bg-gray-200 rounded-full ml-6">
+                                    <div className="h-2 bg-teal-600 rounded-full transition-all duration-300" style={{ width: `${Math.round((currentStep / 4) * 100)}%` }} />
+                                </div>
+                            </div>
+                        </div>
 
-                {currentStep === 2 && (
-                    <Step2AxleConfiguration
-                        vehicleData={vehicleData}
-                        axles={axles}
-                        onUpdateVehicleData={setVehicleData}
-                        onAddAxle={handleAddAxle}
-                        onUpdateAxle={handleUpdateAxle}
-                        onDeleteAxle={handleDeleteAxle}
-                        showAddAxle={showAddAxle}
-                        editingAxle={editingAxle}
-                        onShowAddAxle={setShowAddAxle}
-                        onSetEditingAxle={setEditingAxle}
-                    />
-                )}
+                        <Card className="p-8 border-gray-200">
+                            {currentStep === 1 && (
+                                <Step1VehicleDetails
+                                    onSubmit={handleStep1Submit}
+                                    vehicleData={vehicleData}
+                                    onUpdate={setVehicleData}
+                                />
+                            )}
 
-                {currentStep === 3 && (
-                    <Step3PositionRules
-                        axles={axles}
-                        positions={positions}
-                        skus={skus || []}
-                        onAddRule={handleAddSKURule}
-                        onRemoveRule={handleRemoveSKURule}
-                        onUpdatePosition={(id, updates) => {
-                            setPositions(positions.map(pos =>
-                                pos.id === id ? { ...pos, ...updates } : pos
-                            ));
-                        }}
-                    />
-                )}
+                            {currentStep === 2 && (
+                                <Step2AxleConfiguration
+                                    vehicleData={vehicleData}
+                                    axles={axles}
+                                    onUpdateVehicleData={setVehicleData}
+                                    onAddAxle={handleAddAxle}
+                                    onUpdateAxle={handleUpdateAxle}
+                                    onDeleteAxle={handleDeleteAxle}
+                                    showAddAxle={showAddAxle}
+                                    editingAxle={editingAxle}
+                                    onShowAddAxle={setShowAddAxle}
+                                    onSetEditingAxle={setEditingAxle}
+                                />
+                            )}
 
-                {currentStep === 4 && (
-                    <Step4ReviewActivate
-                        vehicleData={vehicleData}
-                        axles={axles}
-                        positions={positions}
-                        skus={skus || []}
-                        onActivate={handleActivate}
-                        canActivate={canActivate()}
-                    />
-                )}
+                            {currentStep === 3 && (
+                                <Step3PositionRules
+                                    axles={axles}
+                                    positions={positions}
+                                    skus={skus || []}
+                                    onAddRule={handleAddSKURule}
+                                    onRemoveRule={handleRemoveSKURule}
+                                    onUpdatePosition={(id, updates) => {
+                                        setPositions(positions.map(pos =>
+                                            pos.id === id ? { ...pos, ...updates } : pos
+                                        ));
+                                    }}
+                                />
+                            )}
 
-                {/* Navigation Buttons */}
-                <div className="flex justify-between items-center pt-6 border-t border-gray-200 mt-8">
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            if (currentStep > 1) {
-                                setCurrentStep(currentStep - 1);
-                            } else {
-                                router.back();
-                            }
-                        }}
-                    >
-                        <ChevronLeft className="w-4 h-4 mr-2" />
-                        {currentStep === 1 ? 'Cancel' : 'Previous'}
-                    </Button>
-                    <div className="flex gap-3">
-                        {currentStep < 4 ? (
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    if (currentStep === 1) {
-                                        // Trigger form validation and submission
-                                        const form = document.getElementById('vehicle-details-form') as HTMLFormElement;
-                                        if (form) {
-                                            form.requestSubmit();
-                                        }
-                                    } else {
-                                        setCurrentStep(currentStep + 1);
-                                    }
-                                }}
-                                disabled={
-                                    (currentStep === 1 && !canProceedToStep2()) ||
-                                    (currentStep === 2 && !canProceedToStep3()) ||
-                                    (currentStep === 3 && !canProceedToStep4())
-                                }
-                                className="bg-teal-600 hover:bg-teal-700"
-                            >
-                                Next
-                                <ChevronRight className="w-4 h-4 ml-2" />
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={handleActivate}
-                                disabled={!canActivate()}
-                                className="bg-teal-600 hover:bg-teal-700"
-                            >
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Activate Configuration
-                            </Button>
-                        )}
+                            {currentStep === 4 && (
+                                <Step4ReviewActivate
+                                    vehicleData={vehicleData}
+                                    axles={axles}
+                                    positions={positions}
+                                    skus={skus || []}
+                                    onActivate={handleActivate}
+                                    canActivate={canActivate()}
+                                />
+                            )}
+
+                        </Card>
+
+
                     </div>
                 </div>
-            </Card>
+            </div>
         </div>
     );
 }
@@ -508,6 +527,8 @@ function Step1VehicleDetails({
         resolver: zodResolver(vehicleDetailsSchema),
         defaultValues: {
             vehicleId: vehicleData.vehicleId || '',
+            description: vehicleData.description || '',
+            vin: vehicleData.vin || '',
             registrationNumber: vehicleData.registrationNumber || '',
             vehicleType: vehicleData.vehicleType || 'Truck',
             make: vehicleData.make || '',
@@ -542,6 +563,21 @@ function Step1VehicleDetails({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Asset Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        {...methods.register('description')}
+                        rows={3}
+                        className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                        placeholder="A short description of the asset (e.g., Tridem prime mover assigned to depot)"
+                    />
+                    {methods.formState.errors.description && (
+                        <p className="text-xs text-red-600">{methods.formState.errors.description.message}</p>
+                    )}
+                </div>
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                         Vehicle ID / Fleet Number <span className="text-red-500">*</span>
@@ -554,6 +590,7 @@ function Step1VehicleDetails({
                         <p className="text-xs text-red-600">{methods.formState.errors.vehicleId.message}</p>
                     )}
                 </div>
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Registration Number</label>
                     <Input
@@ -561,6 +598,15 @@ function Step1VehicleDetails({
                         placeholder="e.g. ABC-123"
                     />
                 </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">VIN</label>
+                    <Input
+                        {...methods.register('vin')}
+                        placeholder="Vehicle Identification Number"
+                    />
+                </div>
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                         Vehicle Type <span className="text-red-500">*</span>

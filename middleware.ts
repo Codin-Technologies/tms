@@ -2,7 +2,7 @@ import { auth } from "./app/auth"
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isOnLoginPage = req.nextUrl.pathname === "/login";
+  const isOnLoginPage = req.nextUrl.pathname.startsWith("/login");
 
   // Redirect authenticated users away from login page
   if (isLoggedIn && isOnLoginPage) {
@@ -19,8 +19,11 @@ export default auth((req) => {
 })
 
 export const config = {
-  // Protect all routes except login, API routes, and static files
+  // Protect all routes except login, API routes, and static files.
+  // Explicitly include the root `/` so it is checked by the middleware.
+  // Exclude all `_next` paths, any `api` routes (including next-auth), and the login page.
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|login).*)",
+    "/",
+    "/((?!api|_next|favicon.ico|login).*)",
   ],
 }

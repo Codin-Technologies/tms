@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useRef } from "react";
-import { useSKUsQuery } from "@/app/(pages)/stock/skus/query";
+import { useState, useRef, useEffect } from "react";
+import { useSKUsQuery } from "@/app/(pages)/inventory/query";
 import { receiveStock } from "@/actions/sku";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, X, Upload, FileSpreadsheet } from "lucide-react";
+import { Plus, X, Upload, FileSpreadsheet, Download } from "lucide-react";
 import * as XLSX from "xlsx";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { fetchWarehouses, fetchSuppliers, Warehouse, Supplier } from "@/actions/inventory";
 
 type EntryMode = 'bulk' | 'individual';
 
@@ -17,7 +19,15 @@ interface TireEntry {
     manufacturingYear?: number;
 }
 
-export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: () => void, onSuccess: () => void }) {
+export default function ReceiveStockModal({
+    onCancel,
+    onSuccess,
+    initialSkuId
+}: {
+    onCancel: () => void,
+    onSuccess: () => void,
+    initialSkuId?: number | string
+}) {
     const { data: skus } = useSKUsQuery();
     const [loading, setLoading] = useState(false);
     const [entryMode, setEntryMode] = useState<EntryMode>('bulk');
@@ -25,22 +35,51 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
     const [tireEntries, setTireEntries] = useState<TireEntry[]>([{ dotCode: '' }]);
     const [csvFileName, setCsvFileName] = useState<string>('');
     const [csvImported, setCsvImported] = useState(false);
+    const [selectedSkuId, setSelectedSkuId] = useState<string | number>(initialSkuId || "");
+
+    // New states for searchable selects
+    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | number>("");
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string | number>("");
+
+    // Explicitly set the initial SKU if provided/changed
+    useEffect(() => {
+        if (initialSkuId) setSelectedSkuId(initialSkuId);
+    }, [initialSkuId]);
+
+    // Fetch warehouses and suppliers on mount
+    useEffect(() => {
+        const loadOptions = async () => {
+            const [wRes, sRes] = await Promise.all([
+                fetchWarehouses(),
+                fetchSuppliers()
+            ]);
+            if (wRes.success) {
+                setWarehouses(wRes.data);
+                if (wRes.data.length > 0) setSelectedWarehouseId(wRes.data[0].id);
+            }
+            if (sRes.success) {
+                setSuppliers(sRes.data);
+                if (sRes.data.length > 0) setSelectedSupplierId(sRes.data[0].id);
+            }
+        };
+        loadOptions();
+    }, []);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
     const handleQuantityChange = (newQuantity: number) => {
         if (newQuantity < 1) return;
         setQuantity(newQuantity);
-        
+
         if (entryMode === 'individual') {
-            // Adjust tire entries array
             const currentLength = tireEntries.length;
             if (newQuantity > currentLength) {
-                // Add new entries
                 const newEntries = Array.from({ length: newQuantity - currentLength }, () => ({ dotCode: '' }));
                 setTireEntries([...tireEntries, ...newEntries]);
             } else if (newQuantity < currentLength) {
-                // Remove entries
                 setTireEntries(tireEntries.slice(0, newQuantity));
             }
         }
@@ -49,10 +88,8 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
     const handleEntryModeChange = (mode: EntryMode) => {
         setEntryMode(mode);
         if (mode === 'individual') {
-            // Initialize entries based on current quantity
             setTireEntries(Array.from({ length: quantity }, () => ({ dotCode: '' })));
         } else {
-            // Reset CSV import state when switching to bulk
             setCsvImported(false);
             setCsvFileName('');
             setTireEntries([{ dotCode: '' }]);
@@ -63,7 +100,6 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // Check file extension
         const fileName = file.name.toLowerCase();
         const isCSV = fileName.endsWith('.csv');
         const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
@@ -83,15 +119,12 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
 
                 let workbook: XLSX.WorkBook;
                 if (isCSV) {
-                    // Parse CSV
                     const text = typeof data === 'string' ? data : new TextDecoder().decode(data as ArrayBuffer);
                     workbook = XLSX.read(text, { type: 'string' });
                 } else {
-                    // Parse Excel
                     workbook = XLSX.read(data, { type: 'array' });
                 }
 
-                // Get first sheet
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
@@ -101,48 +134,46 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                     return;
                 }
 
-                // Find DOT code and optional manufacturing info columns (case-insensitive)
                 const headerRow = jsonData[0].map((h: any) => String(h || '').toLowerCase().trim());
-                const dotCodeIndex = headerRow.findIndex((h: string) => 
-                    h.includes('dot') || h.includes('dot_code') || h.includes('dotcode') || 
+                const dotCodeIndex = headerRow.findIndex((h: string) =>
+                    h.includes('dot') || h.includes('dot_code') || h.includes('dotcode') ||
                     h.includes('dot number') || h.includes('dotnumber')
                 );
-                const mfgWeekIndex = headerRow.findIndex((h: string) => 
+                const mfgWeekIndex = headerRow.findIndex((h: string) =>
                     h.includes('manufacturing week') || h.includes('mfg_week') || h.includes('mfgweek') ||
                     h.includes('week') || h.includes('production week')
                 );
-                const mfgYearIndex = headerRow.findIndex((h: string) => 
+                const mfgYearIndex = headerRow.findIndex((h: string) =>
                     h.includes('manufacturing year') || h.includes('mfg_year') || h.includes('mfgyear') ||
                     h.includes('year') || h.includes('production year')
                 );
 
                 if (dotCodeIndex === -1) {
-                    alert('Could not find a DOT code column. Please ensure your CSV has a column with "DOT", "DOT Code", or "DOT_Code" in the header. Serial numbers will be auto-generated from DOT codes.');
+                    alert('Could not find a DOT code column. Please ensure your CSV has a column with "DOT", "DOT Code", or "DOT_Code" in the header.');
                     return;
                 }
 
-                // Extract tire details from data rows
                 const importedTires: TireEntry[] = [];
                 for (let i = 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     const dotCode = String(row[dotCodeIndex] || '').trim();
                     if (dotCode) {
                         const tireEntry: TireEntry = { dotCode };
-                        
+
                         if (mfgWeekIndex !== -1) {
                             const week = row[mfgWeekIndex];
                             if (week !== undefined && week !== null && week !== '') {
                                 tireEntry.manufacturingWeek = Number(week);
                             }
                         }
-                        
+
                         if (mfgYearIndex !== -1) {
                             const year = row[mfgYearIndex];
                             if (year !== undefined && year !== null && year !== '') {
                                 tireEntry.manufacturingYear = Number(year);
                             }
                         }
-                        
+
                         importedTires.push(tireEntry);
                     }
                 }
@@ -152,15 +183,14 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                     return;
                 }
 
-                // Update tire entries with imported data
                 setTireEntries(importedTires);
                 setQuantity(importedTires.length);
                 setCsvImported(true);
 
-                alert(`Successfully imported ${importedTires.length} tire details from ${file.name}. Serial numbers will be auto-generated from DOT codes.`);
+                alert(`Successfully imported ${importedTires.length} tire details.`);
             } catch (error) {
                 console.error('Error parsing CSV:', error);
-                alert('Error reading CSV file. Please ensure it is a valid CSV or Excel file.');
+                alert('Error reading CSV file.');
             }
         };
 
@@ -171,10 +201,28 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
         }
     };
 
-    const handleTireDetailChange = (index: number, field: keyof TireEntry, value: string | number) => {
+    const handleTireDetailChange = (index: number, field: keyof TireEntry, value: string | number | undefined) => {
         const updated = [...tireEntries];
+        // @ts-ignore: Dynamic assignment
         updated[index] = { ...updated[index], [field]: value };
         setTireEntries(updated);
+    };
+
+    const handleDownloadTemplate = () => {
+        const headers = ["DOT Code", "Manufacturing Week", "Manufacturing Year"];
+        const csvContent = headers.join(",") + "\n" +
+            "DOT12345678,12,2024\n" +
+            "DOT87654321,01,2024";
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "tire_stock_import_template.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const addTireEntry = () => {
@@ -192,29 +240,19 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
 
     const validateTireDetails = (): string | null => {
         if (entryMode === 'individual' || (entryMode === 'bulk' && csvImported)) {
-            // Check all DOT codes are filled
             const emptyDotCodes = tireEntries.some(entry => !entry.dotCode.trim());
             if (emptyDotCodes) {
-                return "All tires must have a DOT code. Serial numbers will be auto-generated from DOT codes and tire information.";
+                return "All tires must have a DOT code.";
             }
-
-            // DOT codes don't need to be unique - serial numbers will be generated uniquely
-            // But we can warn if many have the same DOT code
-            const dotCodeCounts = new Map<string, number>();
-            tireEntries.forEach(entry => {
-                const dot = entry.dotCode.trim().toUpperCase();
-                dotCodeCounts.set(dot, (dotCodeCounts.get(dot) || 0) + 1);
-            });
         }
         return null;
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        
-        // Validate bulk mode: CSV must be imported (tire details required)
+
         if (entryMode === 'bulk' && !csvImported) {
-            alert('Please import a CSV file with tire details (DOT codes). Serial numbers will be auto-generated.');
+            alert('Please import a CSV file with tire details (DOT codes).');
             return;
         }
 
@@ -224,28 +262,36 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
             return;
         }
 
+        if (!selectedSkuId) {
+            alert("Please select a SKU.");
+            return;
+        }
+
         setLoading(true);
 
         const formData = new FormData(e.currentTarget);
-        const data = {
-            skuId: Number(formData.get("skuId")),
-            quantity: quantity,
-            location: formData.get("location") as string,
-            supplier: formData.get("supplier") as string,
-            condition: formData.get("condition") as string,
-            tireDetails: (entryMode === 'individual' || (entryMode === 'bulk' && csvImported))
-                ? tireEntries.map(e => ({
-                    dotCode: e.dotCode.trim(),
-                    manufacturingWeek: e.manufacturingWeek ? Number(e.manufacturingWeek) : undefined,
-                    manufacturingYear: e.manufacturingYear ? Number(e.manufacturingYear) : undefined,
-                }))
-                : undefined,
-        };
+        const condition = formData.get("condition") as string;
 
-        const result = await receiveStock(data);
+        // Construct the tires payload
+        const tires = tireEntries.map(e => ({
+            dotCode: e.dotCode.trim(),
+            manufactureWeek: e.manufacturingWeek,
+            manufactureYear: e.manufacturingYear,
+            condition: condition
+        }));
+
+        const result = await receiveStock({
+            skuId: selectedSkuId,
+            warehouseId: selectedWarehouseId,
+            supplierId: selectedSupplierId,
+            entryMode: entryMode === 'bulk' ? 'BULK' : 'INDIVIDUAL',
+            tires: tires
+        });
+
         setLoading(false);
 
         if (result.success) {
+            queryClient.invalidateQueries({ queryKey: ["skus"] }); // Invalidate skus to refresh stock count
             queryClient.invalidateQueries({ queryKey: ["sku-inventory"] });
             onSuccess();
         } else {
@@ -254,17 +300,18 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-lg w-full max-w-2xl p-6 relative shadow-2xl my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 p-4 max-h-screen">
+            <div className="bg-white rounded-lg w-full max-w-2xl p-6 relative shadow-2xl my-4 max-h-[90vh] flex flex-col">
                 <button onClick={onCancel} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">✕</button>
-                <h2 className="text-xl font-bold mb-6">Receive Stock - Individual Tire Tracking</h2>
+                <h2 className="text-xl font-bold mb-6">Receive Stock</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Select SKU</label>
-                        <select 
-                            name="skuId" 
-                            required 
+                        <select
+                            value={String(selectedSkuId)} // Controlled input
+                            onChange={(e) => setSelectedSkuId(e.target.value)}
+                            required
                             className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
                         >
                             <option value="">-- Choose SKU --</option>
@@ -323,6 +370,16 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                         <Upload className="w-4 h-4" />
                                         {csvImported ? 'Change File' : 'Import CSV/Excel'}
                                     </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleDownloadTemplate}
+                                        className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 flex items-center gap-2"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download Template
+                                    </Button>
                                     {csvImported && (
                                         <div className="flex items-center gap-2 text-sm text-green-600">
                                             <FileSpreadsheet className="w-4 h-4" />
@@ -330,9 +387,6 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                    Upload a CSV or Excel file with tire details. Required: "DOT Code" column. Optional: "Manufacturing Week", "Manufacturing Year". Serial numbers will be auto-generated from this information.
-                                </p>
                             </div>
 
 
@@ -363,12 +417,6 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                             <div key={index} className="text-sm text-gray-700 flex items-center gap-2">
                                                 <span className="text-gray-500 w-6">#{index + 1}</span>
                                                 <span className="font-mono">DOT: {entry.dotCode}</span>
-                                                {entry.manufacturingWeek && (
-                                                    <span className="text-gray-500">Week: {entry.manufacturingWeek}</span>
-                                                )}
-                                                {entry.manufacturingYear && (
-                                                    <span className="text-gray-500">Year: {entry.manufacturingYear}</span>
-                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -390,7 +438,7 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                     Add Tire
                                 </Button>
                             </div>
-                            <div className="max-h-96 overflow-y-auto space-y-3 border rounded-md p-3">
+                            <div className="max-h-60 overflow-y-auto space-y-3 border rounded-md p-3">
                                 {tireEntries.map((entry, index) => (
                                     <div key={index} className="space-y-2 border-b pb-3 last:border-b-0">
                                         <div className="flex items-center gap-2">
@@ -401,13 +449,13 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                                     <Input
                                                         value={entry.dotCode}
                                                         onChange={(e) => handleTireDetailChange(index, 'dotCode', e.target.value)}
-                                                        placeholder="DOT Code (required)"
+                                                        placeholder="DOT Code"
                                                         required
-                                                        className="w-full"
+                                                        className="w-full h-8 text-sm"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-gray-500 mb-1 block">Manufacturing Week</label>
+                                                    <label className="text-xs text-gray-500 mb-1 block">Week</label>
                                                     <Input
                                                         type="number"
                                                         min="1"
@@ -415,19 +463,19 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                                         value={entry.manufacturingWeek || ''}
                                                         onChange={(e) => handleTireDetailChange(index, 'manufacturingWeek', e.target.value ? Number(e.target.value) : undefined)}
                                                         placeholder="1-52"
-                                                        className="w-full"
+                                                        className="w-full h-8 text-sm"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-gray-500 mb-1 block">Manufacturing Year</label>
+                                                    <label className="text-xs text-gray-500 mb-1 block">Year</label>
                                                     <Input
                                                         type="number"
                                                         min="2000"
                                                         max="2100"
                                                         value={entry.manufacturingYear || ''}
                                                         onChange={(e) => handleTireDetailChange(index, 'manufacturingYear', e.target.value ? Number(e.target.value) : undefined)}
-                                                        placeholder="e.g. 2024"
-                                                        className="w-full"
+                                                        placeholder="2024"
+                                                        className="w-full h-8 text-sm"
                                                     />
                                                 </div>
                                             </div>
@@ -437,7 +485,7 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => removeTireEntry(index)}
-                                                    className="text-red-500 hover:text-red-700"
+                                                    className="text-red-500 hover:text-red-700 h-8 w-8"
                                                 >
                                                     <X className="w-4 h-4" />
                                                 </Button>
@@ -446,42 +494,54 @@ export default function ReceiveStockModal({ onCancel, onSuccess }: { onCancel: (
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-gray-500">
-                                Enter DOT code for each tire (required). Manufacturing week and year are optional. Serial numbers will be auto-generated from this information.
-                            </p>
                         </div>
                     )}
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Receiving Location (Warehouse)</label>
-                        <Input name="location" placeholder="e.g. Dar Depot" required />
-                    </div>
+                    <div className="grid grid-cols-2 gap-4 h-auto min-h-[100px]">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Warehouse *</label>
+                            <SearchableSelect
+                                options={warehouses}
+                                value={selectedWarehouseId}
+                                onChange={setSelectedWarehouseId}
+                                placeholder="Search warehouse..."
+                            />
+                            <p className="text-[10px] text-gray-500 italic">Select from available depots</p>
+                        </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Supplier / PO Reference</label>
-                        <Input name="supplier" placeholder="e.g. Michelin Official" />
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Supplier</label>
+                            <SearchableSelect
+                                options={suppliers}
+                                value={selectedSupplierId}
+                                onChange={setSelectedSupplierId}
+                                placeholder="Search supplier..."
+                            />
+                            <p className="text-[10px] text-gray-500 italic">Select from available vendors</p>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Condition</label>
-                        <select 
-                            name="condition" 
+                        <select
+                            name="condition"
                             className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
                         >
-                            <option value="new">New</option>
-                            <option value="retread">Retread</option>
+                            <option value="NEW">New</option>
+                            <option value="USED">Used</option>
+                            <option value="RETREAD">Retread</option>
                         </select>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-6 border-t">
+                    <div className="flex justify-end gap-3 pt-6 border-t mt-4">
                         <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={loading}>
-                            {loading ? "Processing..." : 
-                             entryMode === 'individual' ? `Receive ${tireEntries.length} Tires` :
-                             csvImported ? `Receive ${tireEntries.length} Tires from CSV` :
-                             "Import CSV Required"}
+                            {loading ? "Processing..." :
+                                entryMode === 'individual' ? `Receive ${tireEntries.length} Tires` :
+                                    csvImported ? `Receive ${tireEntries.length} Tires from CSV` :
+                                        "Import CSV Required"}
                         </Button>
                     </div>
                 </form>

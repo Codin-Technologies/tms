@@ -36,7 +36,9 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
             status: "active" as const,
         };
 
+        console.log('Form data being submitted:', data);
         const result = await createSKU(data);
+        console.log('Create SKU result:', result);
         setLoading(false);
 
         if (result.success) {
@@ -76,7 +78,7 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Category</label>
-                            <select name="category" className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                            <select name="category" defaultValue="Steer" className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
                                 <option value="Steer">Steer</option>
                                 <option value="Drive">Drive</option>
                                 <option value="Trailer">Trailer</option>
@@ -90,7 +92,7 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
                     <h3 className="text-lg font-semibold border-b pb-2">B. Operational Rules</h3>
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Retreadable</label>
-                        <select name="retreadable" className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                        <select name="retreadable" defaultValue="true" className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
                             <option value="true">Yes</option>
                             <option value="false">No</option>
                         </select>
@@ -150,6 +152,6 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
                     {loading ? "Creating..." : "Save SKU"}
                 </Button>
             </div>
-        </form>
+        </form >
     );
 }

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useHeader } from '@/components/HeaderContext';
-import { useSKUsQuery } from "../skus/query";
-import { useSKUInventoryQuery } from "../inventory/query";
+import { useSKUsQuery, useSKUInventoryQuery } from "../../inventory/query";
 import { mockLocations, mockDealers, mockTransferHistory } from "@/data/inventory";
 import { TransferType } from "@/types/inventory";
 import {

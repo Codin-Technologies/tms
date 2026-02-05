@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useSKUInventoryQuery } from "@/app/(pages)/stock/inventory/query";
+import { useSKUInventoryQuery } from "@/app/(pages)/inventory/query";
 import { DataTable } from "@/components/ui/data-table";
 import { SKUInventoryOverview } from "@/types/sku";
 import { ColumnDef } from "@tanstack/react-table";
@@ -21,7 +21,7 @@ export function SKUInventoryTable() {
             accessorKey: "brand",
             header: "SKU",
             cell: ({ row }) => (
-                <Link href={`/stock/skus/${row.original.id}`} className="flex flex-col group/sku">
+                <Link href={`/stock/inventory/${row.original.id}`} className="flex flex-col group/sku">
                     <span className="font-bold text-teal-600 group-hover/sku:underline">{row.original.brand} {row.original.model}</span>
                     <span className="text-xs text-gray-400 font-mono tracking-tighter">{row.original.size} | {row.original.skuCode}</span>
                 </Link>
@@ -67,7 +67,7 @@ export function SKUInventoryTable() {
                     <Button variant="ghost" size="icon" title="Transfer Stock">
                         <ArrowRightLeft className="w-4 h-4" />
                     </Button>
-                    <Link href={`/stock/skus/${row.original.id}`}>
+                    <Link href={`/stock/inventory/${row.original.id}`}>
                         <Button variant="ghost" size="icon" title="View Details">
                             <ClipboardList className="w-4 h-4" />
                         </Button>

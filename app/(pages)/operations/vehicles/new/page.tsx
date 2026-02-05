@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHeader } from '@/components/HeaderContext';
 import { useRouter } from 'next/navigation';
-import { useSKUsQuery } from '@/app/(pages)/stock/skus/query';
+import { useSKUsQuery } from '@/app/(pages)/inventory/query';
 import {
     ChevronRight,
     ChevronLeft,

@@ -15,113 +15,13 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Wrench
+  Wrench,
+  Loader2
 } from 'lucide-react';
-
-// Types
-interface Vehicle {
-  id: string;
-  model: string;
-  status: 'Active' | 'Service' | 'Inactive';
-  tireCount: string;
-  lastService: string;
-  driver: string;
-  hasIssues?: boolean;
-  serviceOverdue?: boolean;
-  needsAttention?: boolean;
-}
-
-// Mock vehicle data with enhanced properties
-const mockVehicles: Vehicle[] = [
-  {
-    id: 'FL-7823',
-    model: 'Freightliner Cascadia',
-    status: 'Active',
-    tireCount: '18/18',
-    lastService: '2 days ago',
-    driver: 'John Smith',
-    hasIssues: false,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-  {
-    id: 'FL-5621',
-    model: 'Kenworth T680',
-    status: 'Service',
-    tireCount: '17/18',
-    lastService: '35 days ago',
-    driver: 'Sarah Johnson',
-    hasIssues: true,
-    serviceOverdue: true,
-    needsAttention: true,
-  },
-  {
-    id: 'FL-3309',
-    model: 'Peterbilt 579',
-    status: 'Active',
-    tireCount: '18/18',
-    lastService: '5 days ago',
-    driver: 'Mike Davis',
-    hasIssues: false,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-  {
-    id: 'FL-8891',
-    model: 'Volvo VNL',
-    status: 'Active',
-    tireCount: '18/18',
-    lastService: '3 days ago',
-    driver: 'Emily Brown',
-    hasIssues: false,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-  {
-    id: 'FL-2234',
-    model: 'Mack Anthem',
-    status: 'Active',
-    tireCount: '16/18',
-    lastService: '1 day ago',
-    driver: 'David Wilson',
-    hasIssues: true,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-  {
-    id: 'FL-9876',
-    model: 'International LT',
-    status: 'Inactive',
-    tireCount: '16/18',
-    lastService: '45 days ago',
-    driver: 'Unassigned',
-    hasIssues: true,
-    serviceOverdue: true,
-    needsAttention: true,
-  },
-  {
-    id: 'FL-4567',
-    model: 'Freightliner Cascadia',
-    status: 'Active',
-    tireCount: '18/18',
-    lastService: '4 days ago',
-    driver: 'Lisa Anderson',
-    hasIssues: false,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-  {
-    id: 'FL-1234',
-    model: 'Kenworth W900',
-    status: 'Service',
-    tireCount: '15/18',
-    lastService: '3 days ago',
-    driver: 'Robert Taylor',
-    hasIssues: true,
-    serviceOverdue: false,
-    needsAttention: false,
-  },
-];
+import { useQuery } from '@tanstack/react-query';
+import { fetchOperationsVehicles, Vehicle } from '@/actions/vehicle';
+import Loading from '../loading';
+import AppError from '../error';
 
 // Stats Card Component
 const StatsCard = ({
@@ -180,6 +80,15 @@ export default function OperationsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const { data: vehiclesData, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['operations-vehicles'],
+    queryFn: async () => {
+      const result = await fetchOperationsVehicles();
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    }
+  });
+
   useEffect(() => {
     setHeader({
       title: 'Tire Operations',
@@ -191,7 +100,7 @@ export default function OperationsPage() {
             <Download className="w-5 h-5" />
             Export
           </button>
-          <button 
+          <button
             onClick={() => router.push('/fleet/vehicles/new')}
             className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2 font-medium"
           >
@@ -202,17 +111,22 @@ export default function OperationsPage() {
       ),
     });
     return () => setHeader({});
-  }, [setHeader]);
+  }, [setHeader, router]);
+
+  if (isLoading) return <Loading />;
+  if (queryError) return <AppError error={queryError as any} reset={() => refetch()} />;
+
+  const vehicles = vehiclesData || [];
 
   // Calculate stats
-  const totalVehicles = mockVehicles.length;
-  const activeWorkOrders = mockVehicles.filter(v => v.status === 'Service').length;
-  const openIssues = mockVehicles.filter(v => v.hasIssues).length;
-  const serviceOverdue = mockVehicles.filter(v => v.serviceOverdue).length;
-  const needsAttention = mockVehicles.filter(v => v.needsAttention).length;
+  const totalVehicles = vehicles.length;
+  const activeWorkOrders = vehicles.filter(v => v.status === 'Service').length;
+  const openIssues = vehicles.filter(v => v.hasIssues).length;
+  const serviceOverdue = vehicles.filter(v => v.serviceOverdue).length;
+  const needsAttention = vehicles.filter(v => v.needsAttention).length;
 
   // Filter vehicles
-  const filteredVehicles = mockVehicles.filter((vehicle) => {
+  const filteredVehicles = vehicles.filter((vehicle) => {
     // Search filter
     if (searchQuery &&
       !vehicle.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -239,7 +153,7 @@ export default function OperationsPage() {
   const currentVehicles = filteredVehicles.slice(startIndex, endIndex);
 
   // Get unique drivers for filter
-  const uniqueDrivers = Array.from(new Set(mockVehicles.map(v => v.driver)));
+  const uniqueDrivers = Array.from(new Set(vehicles.map(v => v.driver)));
 
   return (
     <div className="space-y-6">
@@ -446,10 +360,10 @@ export default function OperationsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${vehicle.status === 'Active'
-                          ? 'bg-green-100 text-green-800'
-                          : vehicle.status === 'Service'
-                            ? 'bg-orange-100 text-orange-800'
-                            : 'bg-gray-100 text-gray-800'
+                        ? 'bg-green-100 text-green-800'
+                        : vehicle.status === 'Service'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-gray-100 text-gray-800'
                         }`}
                     >
                       {vehicle.status === 'Active' ? '✓ Active' : vehicle.status === 'Service' ? '○ Service' : '✗ Inactive'}
@@ -457,8 +371,8 @@ export default function OperationsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className={`text-sm font-medium ${vehicle.tireCount.split('/')[0] === vehicle.tireCount.split('/')[1]
-                        ? 'text-green-600'
-                        : 'text-orange-600'
+                      ? 'text-green-600'
+                      : 'text-orange-600'
                       }`}>
                       {vehicle.tireCount}
                     </div>

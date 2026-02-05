@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -16,6 +16,7 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-table": "^8.21.3",
     "@types/xlsx": "^0.0.36",
+    "axios": "^1.13.2",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.7",
     "lucide-react": "^0.553.0",

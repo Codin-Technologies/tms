@@ -20,43 +20,81 @@ if (!NEXTAUTH_SECRET) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true, // Add this line
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
         username: { label: "Username" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (Credentials) => {
-        if (!Credentials?.username || !Credentials?.password) {
-          throw new InvalidLoginError(
-            "Please provide both username and password"
-          );
+      authorize: async (credentials) => {
+        if (!credentials?.username || !credentials?.password) {
+          throw new InvalidLoginError("Please provide both email and password");
         }
 
-        const user = await fetch("https://dummyjson.com/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: Credentials.username,
-            password: Credentials.password,
-            expiresInMins: 30,
-          }),
-          credentials: "include",
-        });
+        try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://194.146.13.23';
+          const response = await fetch(`${API_URL}/api/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({
+              email: credentials.username,
+              password: credentials.password,
+            }),
+          });
 
-        const userData = await user.json();
+          const data = await response.json();
 
-        console.log("User Data:", userData);
+          if (response.ok && data.token) {
+            const userObj = data.user || data.data?.user || data.data;
 
-        if (user.ok && userData) {
-          return {...userData, name: userData.firstName + " " + userData.lastName};
-        } else {
-          throw new InvalidLoginError("Invalid username or password");
+            // Robust role extraction
+            let userRole = 'GUEST';
+            const rawRole = userObj?.role || userObj?.roles || data.role || data.roles;
+
+            if (typeof rawRole === 'string') {
+              userRole = rawRole;
+            } else if (Array.isArray(rawRole) && rawRole.length > 0) {
+              const firstRole = rawRole[0];
+              userRole = typeof firstRole === 'string' ? firstRole : (firstRole.name || firstRole.key || 'GUEST');
+            } else if (rawRole && typeof rawRole === 'object') {
+              userRole = rawRole.name || rawRole.key || 'GUEST';
+            }
+
+            return {
+              id: (userObj?.id || 'unknown').toString(),
+              name: userObj?.name || 'Unknown User',
+              email: userObj?.email || '',
+              role: userRole,
+              accessToken: data.token,
+            };
+          } else {
+            throw new InvalidLoginError(data.message || "Invalid email or password");
+          }
+        } catch (error: any) {
+          console.error("Auth error:", error);
+          if (error instanceof InvalidLoginError) throw error;
+          throw new InvalidLoginError("Authentication failed. Please check your credentials.");
         }
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.accessToken = (user as any).accessToken;
+        token.role = (user as any).role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        (session as any).accessToken = token.accessToken;
+        (session.user as any).role = token.role;
+      }
+      return session;
+    },
+  },
   pages: {
     signIn: "/login",
   },

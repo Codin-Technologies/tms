@@ -1,7 +1,7 @@
 export const ROLES = [
-  { key: 'ADMIN', label: 'Administrator' },
-  { key: 'FLEET_MANAGER', label: 'Fleet Manager' },
-  { key: 'WORKSHOP_SUPERVISOR', label: 'Workshop Supervisor' },
-  { key: 'TECHNICIAN', label: 'Technician' },
-  { key: 'READ_ONLY', label: 'Read-Only' },
+  { key: 'Administrator', label: 'Administrator' },
+  { key: 'Fleet Manager', label: 'Fleet Manager' },
+  { key: 'Workshop Supervisor', label: 'Workshop Supervisor' },
+  { key: 'Technician', label: 'Technician' },
+  { key: 'Read-Only', label: 'Read-Only' },
 ];

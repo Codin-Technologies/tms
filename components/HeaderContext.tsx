@@ -8,6 +8,8 @@ type HeaderState = {
   subtitle?: ReactNode;
   searchPlaceholder?: string;
   actions?: ReactNode;
+  actionLabel?: string;
+  backButton?: ReactNode;
 };
 
 type HeaderContextType = {

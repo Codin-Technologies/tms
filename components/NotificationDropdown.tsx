@@ -1,90 +1,39 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, AlertCircle, Info, AlertTriangle, CheckCircle, Clock } from "lucide-react";
-
-export interface Notification {
-    id: string;
-    type: "alert" | "info" | "warning" | "success";
-    title: string;
-    description: string;
-    timestamp: Date;
-    isRead: boolean;
-}
-
-// Sample notification data
-const sampleNotifications: Notification[] = [
-    {
-        id: "1",
-        type: "alert",
-        title: "Critical Tire Pressure Alert",
-        description: "Vehicle TRK-001 has critically low tire pressure on rear axle",
-        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-        isRead: false,
-    },
-    {
-        id: "2",
-        type: "warning",
-        title: "Maintenance Due Soon",
-        description: "3 vehicles require tire rotation within the next 7 days",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        isRead: false,
-    },
-    {
-        id: "3",
-        type: "info",
-        title: "New Inventory Received",
-        description: "50 units of Michelin XZE tires added to stock",
-        timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
-        isRead: true,
-    },
-    {
-        id: "4",
-        type: "success",
-        title: "Maintenance Completed",
-        description: "Tire replacement completed for vehicle TRK-015",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-        isRead: true,
-    },
-    {
-        id: "5",
-        type: "warning",
-        title: "Low Stock Alert",
-        description: "Goodyear G159 stock below minimum threshold (5 units remaining)",
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-        isRead: false,
-    },
-    {
-        id: "6",
-        type: "info",
-        title: "System Update",
-        description: "Fleet management system updated to version 2.1.0",
-        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        isRead: true,
-    },
-];
+import { X, AlertCircle, Info, AlertTriangle, CheckCircle, Clock, Loader2 } from "lucide-react";
+import { Alert, AlertStatus, AlertSeverity } from "@/types/alert";
+import { resolveAlert } from "@/actions/alert";
+import { toast } from "sonner";
 
 interface NotificationDropdownProps {
     isOpen: boolean;
     onClose: () => void;
+    alerts: Alert[];
+    onRefresh: () => void;
+    loading?: boolean;
 }
 
-export default function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
-    const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications);
+export default function NotificationDropdown({ isOpen, onClose, alerts, onRefresh, loading }: NotificationDropdownProps) {
+    const [resolvingId, setResolvingId] = useState<number | null>(null);
 
-    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const openAlerts = alerts.filter(a => a.status === 'open');
+    const unreadCount = openAlerts.length;
 
-    const handleMarkAsRead = (id: string) => {
-        setNotifications((prev) =>
-            prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-        );
+    const handleResolve = async (id: number) => {
+        setResolvingId(id);
+        const result = await resolveAlert(id, { notes: "Resolved from notification dropdown" });
+        if (result.success) {
+            toast.success("Alert resolved");
+            onRefresh();
+        } else {
+            toast.error(result.message || "Failed to resolve alert");
+        }
+        setResolvingId(null);
     };
 
-    const handleMarkAllAsRead = () => {
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    };
-
-    const getRelativeTime = (date: Date) => {
+    const getRelativeTime = (timestamp: string) => {
+        const date = new Date(timestamp);
         const now = new Date();
         const diffInMs = now.getTime() - date.getTime();
         const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
@@ -99,9 +48,9 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
         return date.toLocaleDateString();
     };
 
-    const getNotificationIcon = (type: Notification["type"]) => {
-        switch (type) {
-            case "alert":
+    const getSeverityIcon = (severity: AlertSeverity) => {
+        switch (severity) {
+            case "critical":
                 return <AlertCircle className="w-5 h-5 text-red-500" />;
             case "warning":
                 return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
@@ -113,11 +62,11 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
         }
     };
 
-    const getNotificationBgColor = (type: Notification["type"], isRead: boolean) => {
-        if (isRead) return "bg-gray-50";
+    const getSeverityBgColor = (severity: AlertSeverity, status: AlertStatus) => {
+        if (status !== 'open') return "bg-gray-50 opacity-60";
 
-        switch (type) {
-            case "alert":
+        switch (severity) {
+            case "critical":
                 return "bg-red-50";
             case "warning":
                 return "bg-yellow-50";
@@ -141,81 +90,90 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
             />
 
             {/* Dropdown Panel */}
-            <div className="absolute right-0 mt-2 w-[420px] bg-white rounded-lg shadow-2xl border border-gray-200 z-40 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute right-0 mt-2 w-[420px] bg-white rounded-lg shadow-2xl border border-gray-200 z-40 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white">
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">System Alerts</h3>
                         {unreadCount > 0 && (
                             <p className="text-sm text-gray-500 mt-0.5">
-                                {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
+                                {unreadCount} active alert{unreadCount !== 1 ? "s" : ""}
                             </p>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                        aria-label="Close notifications"
-                    >
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                </div>
-
-                {/* Mark all as read */}
-                {unreadCount > 0 && (
-                    <div className="px-5 py-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                        {loading && <Loader2 className="w-4 h-4 animate-spin text-teal-600" />}
                         <button
-                            onClick={handleMarkAllAsRead}
-                            className="text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
+                            onClick={onClose}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Close notifications"
                         >
-                            Mark all as read
+                            <X className="w-5 h-5 text-gray-500" />
                         </button>
                     </div>
-                )}
+                </div>
 
                 {/* Notifications List */}
-                <div className="max-h-[500px] overflow-y-auto scrollbar-visible">
-                    {notifications.length === 0 ? (
+                <div className="max-h-[500px] overflow-y-auto scrollbar-visible bg-gray-50/30">
+                    {alerts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 px-5">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                 <CheckCircle className="w-8 h-8 text-gray-400" />
                             </div>
-                            <p className="text-gray-500 font-medium">No notifications</p>
-                            <p className="text-sm text-gray-400 mt-1">You're all caught up!</p>
+                            <p className="text-gray-500 font-medium">No alerts found</p>
+                            <p className="text-sm text-gray-400 mt-1">System is healthy!</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-gray-100">
-                            {notifications.map((notification) => (
+                            {alerts.map((alert) => (
                                 <div
-                                    key={notification.id}
-                                    onClick={() => handleMarkAsRead(notification.id)}
-                                    className={`px-5 py-4 cursor-pointer transition-all hover:bg-gray-50 ${getNotificationBgColor(notification.type, notification.isRead)
-                                        }`}
+                                    key={alert.id}
+                                    className={`px-5 py-4 transition-all hover:bg-gray-50 ${getSeverityBgColor(alert.severity, alert.status)}`}
                                 >
                                     <div className="flex gap-3">
                                         {/* Icon */}
                                         <div className="flex-shrink-0 mt-0.5">
-                                            {getNotificationIcon(notification.type)}
+                                            {getSeverityIcon(alert.severity)}
                                         </div>
 
                                         {/* Content */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2 mb-1">
-                                                <h4 className={`text-sm font-semibold ${notification.isRead ? "text-gray-700" : "text-gray-900"
-                                                    }`}>
-                                                    {notification.title}
+                                                <h4 className={`text-sm font-semibold text-gray-900`}>
+                                                    {alert.title}
                                                 </h4>
-                                                {!notification.isRead && (
-                                                    <span className="flex-shrink-0 w-2 h-2 bg-teal-500 rounded-full mt-1.5" />
+                                                {alert.status === 'open' && (
+                                                    <span className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full mt-1.5" />
                                                 )}
                                             </div>
-                                            <p className={`text-sm ${notification.isRead ? "text-gray-500" : "text-gray-600"
-                                                } line-clamp-2`}>
-                                                {notification.description}
+                                            <p className={`text-sm text-gray-600 mb-2`}>
+                                                {alert.description}
                                             </p>
-                                            <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
-                                                <Clock className="w-3.5 h-3.5" />
-                                                <span>{getRelativeTime(notification.timestamp)}</span>
+
+                                            <div className="flex items-center justify-between mt-3">
+                                                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span>{getRelativeTime(alert.created_at)}</span>
+                                                    {alert.module && (
+                                                        <>
+                                                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                                                            <span className="uppercase tracking-wider font-medium">{alert.module}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {alert.status === 'open' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleResolve(alert.id);
+                                                        }}
+                                                        disabled={resolvingId === alert.id}
+                                                        className="text-xs font-bold text-teal-600 hover:text-teal-700 bg-white border border-teal-100 px-3 py-1 rounded-full shadow-sm hover:shadow transition-all disabled:opacity-50"
+                                                    >
+                                                        {resolvingId === alert.id ? "Resolving..." : "Resolve"}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -226,10 +184,13 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
                 </div>
 
                 {/* Footer */}
-                {notifications.length > 0 && (
+                {alerts.length > 0 && (
                     <div className="px-5 py-3 border-t border-gray-200 bg-gray-50">
-                        <button className="w-full text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors py-1">
-                            View all notifications
+                        <button
+                            onClick={onRefresh}
+                            className="w-full text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors py-1 flex items-center justify-center gap-2"
+                        >
+                            Refresh System Alerts
                         </button>
                     </div>
                 )}
