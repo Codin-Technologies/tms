@@ -183,8 +183,8 @@ export default function ThresholdManagerPage() {
                                     const pending = pendingChanges[sku.skuCode];
                                     const reorderVal = pending ? pending.reorderPoint : sku.reorderPoint;
                                     const minVal = pending ? pending.minStockLevel : sku.minStockLevel;
-                                    const isLow = (sku.currentStock || 0) <= minVal;
-                                    const isAtReorder = (sku.currentStock || 0) <= reorderVal;
+                                    const isLow = (sku.currentStock || 0) <= (minVal ?? 0);
+                                    const isAtReorder = (sku.currentStock || 0) <= (reorderVal ?? 0);
 
                                     return (
                                         <tr key={sku.skuCode} className="hover:bg-gray-50 transition-colors group">
