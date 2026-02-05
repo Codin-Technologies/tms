@@ -50,7 +50,7 @@ const VehicleAxleConfigurator: React.FC = () => {
         <select
           id="config-select"
           value={configuration}
-          onChange={(e) => setConfiguration(e.target.value)}
+          onChange={(e) => setConfiguration(e.target.value as ConfigKey)}
         >
           {Object.keys(configs).map((config) => (
             <option key={config} value={config}>
