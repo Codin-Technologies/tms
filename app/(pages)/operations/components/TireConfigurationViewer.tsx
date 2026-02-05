@@ -1,10 +1,12 @@
+'use client';
+
 import React, { useState } from 'react';
 import './VehicleAxleConfigurator.css';
 
 // Component to render a single axle group
-const AxleGroup = ({ type, isDriven }) => {
+const AxleGroup: React.FC<{ isDriven: boolean }> = ({ isDriven }) => {
   // Simple visual representation of wheels
-  const Wheel = ({ isDriven }) => (
+  const Wheel: React.FC<{ isDriven: boolean }> = ({ isDriven }) => (
     <div className={`wheel ${isDriven ? 'driven' : ''}`}></div>
   );
 
@@ -19,7 +21,7 @@ const AxleGroup = ({ type, isDriven }) => {
 };
 
 // Main Configurator Component
-const VehicleAxleConfigurator = () => {
+const VehicleAxleConfigurator: React.FC = () => {
   const [configuration, setConfiguration] = useState('4x2');
 
   // Define axle properties for different configurations (Total Axles x Driven Axles)
@@ -66,7 +68,7 @@ const VehicleAxleConfigurator = () => {
         </div>
       </div>
       
-      <p>Current selection: **{configuration}**</p>
+      <p className="mt-4">Current selection: <strong>{configuration}</strong></p>
     </div>
   );
 };
