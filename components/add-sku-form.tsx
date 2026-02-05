@@ -1,23 +1,34 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createSKU } from "@/actions/sku";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSKUsQuery } from "@/app/(pages)/inventory/query";
 
 export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => void, onSuccess: () => void }) {
     const [loading, setLoading] = useState(false);
+    const [brands, setBrands] = useState<string[]>([]);
+    const [brandSelection, setBrandSelection] = useState('');
+    const [otherBrand, setOtherBrand] = useState('');
     const queryClient = useQueryClient();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
 
+        // If user selected "Other...", use the `otherBrand` state value
+        if (brandSelection === '__other' && !otherBrand) {
+            alert('Please provide a brand name');
+            setLoading(false);
+            return;
+        }
+
         const formData = new FormData(e.currentTarget);
         const data = {
             skuCode: formData.get("skuCode") as string,
-            brand: formData.get("brand") as string,
+            brand: brandSelection === '__other' ? otherBrand : brandSelection || (formData.get("brand") as string),
             model: formData.get("model") as string,
             size: formData.get("size") as string,
             plyRating: formData.get("plyRating") as string,
@@ -49,6 +60,23 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
         }
     };
 
+    // Load brands once on mount
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await fetch('/api/brands');
+                const json = await res.json();
+                if (mounted && json?.success) {
+                    setBrands(json.data || []);
+                }
+            } catch (err) {
+                console.error('Failed to load brands', err);
+            }
+        })();
+        return () => { mounted = false; };
+    }, []);
+
     return (
         <form onSubmit={handleSubmit} className="space-y-8 max-h-[70vh] overflow-y-auto px-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -61,7 +89,29 @@ export default function AddSKUForm({ onCancel, onSuccess }: { onCancel: () => vo
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Brand</label>
-                        <Input name="brand" placeholder="e.g. Michelin" required />
+                        <select
+                            name="brand"
+                            value={brandSelection}
+                            onChange={(e) => setBrandSelection(e.target.value)}
+                            className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                            required
+                        >
+                            <option value="">Select brand</option>
+                            {brands.map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                            <option value="__other">Other...</option>
+                        </select>
+
+                        {brandSelection === '__other' && (
+                            <Input
+                                name="brand"
+                                value={otherBrand}
+                                onChange={(e) => setOtherBrand(e.target.value)}
+                                placeholder="Enter brand name"
+                                required
+                            />
+                        )}
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Model</label>
