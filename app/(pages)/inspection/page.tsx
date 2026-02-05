@@ -215,7 +215,7 @@ export default function InspectionPage() {
         <StatsCard
           title="Pending Reviews"
           value={inspectionOverview ? inspectionOverview.data?.pendingReviews.value : 0}
-          change={inspectionOverview && parseInt(inspectionOverview.data?.pendingReviews.value) > 0 ? 'Attention Needed' : 'All Clear'}
+          change={inspectionOverview && (inspectionOverview.data?.pendingReviews.value || 0) > 0 ? 'Attention Needed' : 'All Clear'}
           icon={<Clock className="w-6 h-6 text-yellow-600" />}
           iconBg="bg-yellow-50"
           changeType="warning"
