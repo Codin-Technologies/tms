@@ -19,13 +19,11 @@ export interface LoginResponse {
 const TOKEN_KEY = 'api_token';
 
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://194.146.13.23';
-    try {
+        try {
         console.log('Attempting login with:', { email: credentials.email, password: '***' });
 
-        // Use axios directly without the interceptor to avoid sending auth header on login
-
-        const response = await axios.post<LoginResponse>(`${API_URL}/api/login`, credentials, {
+        // Use the shared `api` instance so client requests go via the proxy and server requests go direct to backend
+        const response = await api.post<LoginResponse>('/api/login', credentials, {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
@@ -44,7 +42,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
         return response.data;
     } catch (error: any) {
         console.error('Login attempt failed:', {
-            apiUrl: `${API_URL}/api/login`,
+            apiUrl: api.defaults?.baseURL ? `${api.defaults.baseURL}/api/login` : '/api/login',
             error: error,
             message: error.message,
             stack: error.stack,

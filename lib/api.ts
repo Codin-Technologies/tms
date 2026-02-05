@@ -1,6 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://194.146.13.23';
+const isServer = typeof window === 'undefined';
+const SERVER_API = process.env.API_BASE_URL || 'http://194.146.13.23';
+const CLIENT_API = process.env.NEXT_PUBLIC_API_URL || '/api/proxy';
+const API_URL = isServer ? SERVER_API : CLIENT_API;
 
 const api = axios.create({
     baseURL: API_URL,
