@@ -206,7 +206,7 @@ export default function ThresholdManagerPage() {
                                                 <div className="relative max-w-[120px]">
                                                     <input
                                                         type="number"
-                                                        value={reorderVal}
+                                                        value={reorderVal ?? ''}
                                                         onChange={(e) => handleThresholdChange(sku.skuCode, 'reorderPoint', e.target.value)}
                                                         className={`w-full px-3 py-2 border rounded-lg text-sm font-bold transition-all ${pending?.reorderPoint !== undefined ? 'border-teal-400 bg-teal-50 ring-2 ring-teal-500/10' : 'border-gray-200 bg-white hover:border-teal-300'}`}
                                                     />
@@ -216,7 +216,7 @@ export default function ThresholdManagerPage() {
                                                 <div className="relative max-w-[120px]">
                                                     <input
                                                         type="number"
-                                                        value={minVal}
+                                                        value={minVal ?? ''}
                                                         onChange={(e) => handleThresholdChange(sku.skuCode, 'minStockLevel', e.target.value)}
                                                         className={`w-full px-3 py-2 border rounded-lg text-sm font-bold transition-all ${pending?.minStockLevel !== undefined ? 'border-red-400 bg-red-50 ring-2 ring-red-500/10' : 'border-gray-200 bg-white hover:border-red-300'}`}
                                                     />
