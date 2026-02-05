@@ -52,11 +52,14 @@ const VehicleAxleConfigurator: React.FC = () => {
           value={configuration}
           onChange={(e) => setConfiguration(e.target.value as ConfigKey)}
         >
-          {Object.keys(configs).map((config) => (
-            <option key={config} value={config}>
-              {config} ({configs[config].total} axles, {configs[config].driven} driven)
-            </option>
-          ))}
+          {Object.keys(configs).map((config) => {
+            const key = config as ConfigKey;
+            return (
+              <option key={key} value={key}>
+                {key} ({configs[key].total} axles, {configs[key].driven} driven)
+              </option>
+            );
+          })}
         </select>
       </div>
 

@@ -503,7 +503,7 @@ export default function ReceiveStockModal({
                             <SearchableSelect
                                 options={warehouses}
                                 value={selectedWarehouseId}
-                                onChange={setSelectedWarehouseId}
+                                onChange={(v) => setSelectedWarehouseId(v ?? "")}
                                 placeholder="Search warehouse..."
                             />
                             <p className="text-[10px] text-gray-500 italic">Select from available depots</p>
@@ -514,7 +514,7 @@ export default function ReceiveStockModal({
                             <SearchableSelect
                                 options={suppliers}
                                 value={selectedSupplierId}
-                                onChange={setSelectedSupplierId}
+                                onChange={(v) => setSelectedSupplierId(v ?? "")}
                                 placeholder="Search supplier..."
                             />
                             <p className="text-[10px] text-gray-500 italic">Select from available vendors</p>
