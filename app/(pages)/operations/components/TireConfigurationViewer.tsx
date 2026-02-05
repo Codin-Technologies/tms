@@ -22,10 +22,11 @@ const AxleGroup: React.FC<{ isDriven: boolean }> = ({ isDriven }) => {
 
 // Main Configurator Component
 const VehicleAxleConfigurator: React.FC = () => {
-  const [configuration, setConfiguration] = useState('4x2');
+  type ConfigKey = '4x2' | '6x4' | '8x4';
+  const [configuration, setConfiguration] = useState<ConfigKey>('4x2');
 
   // Define axle properties for different configurations (Total Axles x Driven Axles)
-  const configs = {
+  const configs: Record<ConfigKey, { total: number; driven: number }> = {
     '4x2': { total: 2, driven: 1 },
     '6x4': { total: 3, driven: 2 },
     '8x4': { total: 4, driven: 2 },
